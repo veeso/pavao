@@ -1,0 +1,25 @@
+[package]
+name = "pavao"
+version = "0.1.0"
+authors = ["Christian Visintin <christian.visintin1997@gmail.com>"]
+edition = "2018"
+categories = ["network-programming"]
+description = "Rust native async SMB2 and SMB3 client library."
+documentation = "https://docs.rs/pavao"
+homepage = "https://github.com/veeso/pavao"
+include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
+keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/veeso/pavao"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitflags = "^1.2.1"
+log = "^0.4.0"
+thiserror = "^1.0.0"
+
+[dev-dependencies]
+env_logger = "0.8.3"
+pretty_assertions = "0.7.2"
