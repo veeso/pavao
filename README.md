@@ -8,10 +8,6 @@
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
 <p align="center">Current version: 0.1.0 (FIXME:)</p>
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [![Stars](https://img.shields.io/github/stars/veeso/pavao.svg)](https://github.com/veeso/pavao) [![Downloads](https://img.shields.io/crates/d/pavao.svg)](https://crates.io/crates/pavao) [![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-orange.svg)](https://crates.io/crates/pavao) [![Docs](https://docs.rs/pavao/badge.svg)](https://docs.rs/pavao)  
-
-[![Build](https://github.com/veeso/pavao/workflows/Build/badge.svg)](https://github.com/veeso/pavao/actions) [![Coverage Status](https://coveralls.io/repos/github/veeso/pavao/badge.svg?branch=main)](https://coveralls.io/github/veeso/pavao?branch=main)
-
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
     ><img
