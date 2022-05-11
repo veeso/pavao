@@ -1,0 +1,33 @@
+name: Linux
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
+      - name: Setup containers
+        run: docker-compose -f "tests/docker-compose.yml" up -d --build
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features --features with-containers --no-fail-fast
+        env:
+          RUST_LOG: trace
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy -- -Dwarnings

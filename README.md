@@ -4,12 +4,58 @@
   <img src="docs/images/pavao.svg" width="256" height="256" />
 </p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT) [![Stars](https://img.shields.io/github/stars/veeso/pavao.svg)](https://github.com/veeso/pavao) [![Downloads](https://img.shields.io/crates/d/pavao.svg)](https://crates.io/crates/pavao) [![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-orange.svg)](https://crates.io/crates/pavao) [![Docs](https://docs.rs/pavao/badge.svg)](https://docs.rs/pavao)  
+<p align="center">~ A Rust client library for SMB ~</p>
+<p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
+<p align="center">Current version: 0.1.0 (FIXME:)</p>
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [![Stars](https://img.shields.io/github/stars/veeso/pavao.svg)](https://github.com/veeso/pavao) [![Downloads](https://img.shields.io/crates/d/pavao.svg)](https://crates.io/crates/pavao) [![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-orange.svg)](https://crates.io/crates/pavao) [![Docs](https://docs.rs/pavao/badge.svg)](https://docs.rs/pavao)  
 
 [![Build](https://github.com/veeso/pavao/workflows/Build/badge.svg)](https://github.com/veeso/pavao/actions) [![Coverage Status](https://coveralls.io/repos/github/veeso/pavao/badge.svg?branch=main)](https://coveralls.io/github/veeso/pavao?branch=main)
 
-Developed by Christian Visintin  
-Current version: 0.1.0 FIXME: ()
+<p align="center">
+  <a href="https://www.gnu.org/licenses/gpl-3.0"
+    ><img
+      src="https://img.shields.io/badge/License-GPLv3-blue.svg"
+      alt="License-GPLv3"
+  /></a>
+  <a href="https://github.com/veeso/pavao/stargazers"
+    ><img
+      src="https://img.shields.io/github/stars/veeso/pavao.svg"
+      alt="Repo stars"
+  /></a>
+  <a href="https://crates.io/crates/pavao"
+    ><img
+      src="https://img.shields.io/crates/d/pavao.svg"
+      alt="Downloads counter"
+  /></a>
+  <a href="https://crates.io/crates/pavao"
+    ><img
+      src="https://img.shields.io/crates/v/pavao.svg"
+      alt="Latest version"
+  /></a>
+  <a href="https://ko-fi.com/veeso">
+    <img
+      src="https://img.shields.io/badge/donate-ko--fi-red"
+      alt="Ko-fi"
+  /></a>
+</p>
+<p align="center">
+  <a href="https://github.com/veeso/pavao/actions"
+    ><img
+      src="https://github.com/veeso/pavao/workflows/Linux/badge.svg"
+      alt="Linux CI"
+  /></a>
+  <a href="https://github.com/veeso/pavao/actions"
+    ><img
+      src="https://github.com/veeso/pavao/workflows/MacOS/badge.svg"
+      alt="MacOS CI"
+  /></a>
+  <a href="https://coveralls.io/github/veeso/pavao"
+    ><img
+      src="https://coveralls.io/repos/github/veeso/pavao/badge.svg"
+      alt="Coveralls"
+  /></a>
+</p>
 
 ---
 
@@ -19,9 +65,8 @@ Current version: 0.1.0 FIXME: ()
     - [Add pavao to your Cargo.toml 🦀](#add-pavao-to-your-cargotoml-)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
-  - [Guides 🎓](#guides-)
   - [Documentation 📚](#documentation-)
-  - [Buy me a coffee ☕](#buy-me-a-coffee-)
+  - [Support the developer ☕](#support-the-developer-)
   - [Contributing and issues 🤝🏻](#contributing-and-issues-)
   - [Changelog ⏳](#changelog-)
   - [License 📃](#license-)
@@ -30,13 +75,9 @@ Current version: 0.1.0 FIXME: ()
 
 ## About Pavão 🦚
 
-Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust native async client library for SMB version 2 and 3.
+Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which exposes type-safe functions to interact with the C libsmbclient.
 
-And that's also explains the reason of the name: Realm stands for React and Elm.
-
-pavao also comes with a built-in standard library of components you may find very useful. Don't worry, they are optional if you don't want to use them 😉, just follow the guide in [get started](#get-started-).
-
-> Pavão |> Pavé |> Animal Crossing |> Carnival |> Samba |> SMB
+> Pavão |> Pavé |> Animal Crossing |> Carnival |> Rio De Janeiro |> Samba |> SMB
 
 ---
 
@@ -58,26 +99,20 @@ TODO:
 
 ---
 
-## Guides 🎓
-
-- [Get Started Guide](docs/get-started.md)
-- [The UI lifecycle](docs/lifecycle.md)
-- [Standard Library Components](docs/std-components.md)
-- [Implement components](docs/new-components.md)
-
----
-
 ## Documentation 📚
 
 The developer documentation can be found on Rust Docs at <https://docs.rs/pavao>
 
 ---
 
-## Buy me a coffee ☕
+## Support the developer ☕
 
 If you like Pavão and you're grateful for the work I've done, please consider a little donation 🥳
 
-[![Buy-me-a-coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=veeso&button_colour=404040&font_colour=ffffff&font_family=Comic&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/veeso)
+You can make a donation with one of these platforms:
+
+[![ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/veeso)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.me/chrisintin)
 
 ---
 
@@ -98,6 +133,6 @@ View Pavão's changelog [HERE](CHANGELOG.md)
 
 ## License 📃
 
-Pavão is licensed under the MIT license.
+Pavão is licensed under the GPLv3 license.
 
 You can read the entire license [HERE](LICENSE)
