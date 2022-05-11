@@ -30,4 +30,7 @@ pub(crate) mod utils;
 
 // -- exports
 pub use error::{SmbError, SmbResult};
-pub use smb::{options, SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOptions};
+pub use smb::{
+    options, SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbFile, SmbOpenOptions,
+    SmbOptions,
+};

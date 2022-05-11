@@ -2,13 +2,12 @@
 //!
 //! module which exposes the Smb Client
 
-use super::{SmbCredentials, SmbOptions};
+use super::{SmbCredentials, SmbFile, SmbOpenOptions, SmbOptions};
 use crate::utils;
 use crate::{SmbError, SmbResult};
 
 use libc::{self, c_char, c_int, c_void, mode_t, off_t};
 use smbclient_sys::{SMBCCTX as SmbContext, *};
-use std::io::{Read, Seek, SeekFrom, Write};
 use std::mem;
 use std::panic;
 use std::ptr;
@@ -18,7 +17,7 @@ const SMBC_TRUE: smbc_bool = 1;
 
 /// Smb protocol client
 pub struct SmbClient {
-    ctx: *mut SmbContext,
+    pub(crate) ctx: *mut SmbContext,
     uri: String,
 }
 
@@ -52,6 +51,80 @@ impl SmbClient {
         Ok(smbc)
     }
 
+    /// Get netbios name from server
+    pub fn get_netbios_name(&self) -> SmbResult<String> {
+        unsafe {
+            let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(self.ctx))?;
+            utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
+        }
+    }
+
+    /// Set netbios name to server
+    pub fn set_netbios_name<S: AsRef<str>>(&self, name: S) -> SmbResult<()> {
+        let cstr = utils::str_to_cstring(name)?;
+        unsafe { smbc_setNetbiosName(self.ctx, cstr.into_raw()) }
+        Ok(())
+    }
+
+    /// Get workgroup name from server
+    pub fn get_workgroup(&self) -> SmbResult<String> {
+        unsafe {
+            let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(self.ctx))?;
+            utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
+        }
+    }
+
+    /// Set workgroup name to server
+    pub fn set_workgroup<S: AsRef<str>>(&self, name: S) -> SmbResult<()> {
+        let cstr = utils::str_to_cstring(name)?;
+        unsafe { smbc_setWorkgroup(self.ctx, cstr.into_raw()) }
+        Ok(())
+    }
+
+    /// Get get_user name from server
+    pub fn get_user(&self) -> SmbResult<String> {
+        unsafe {
+            let ptr = utils::result_from_ptr_mut(smbc_getUser(self.ctx))?;
+            utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
+        }
+    }
+
+    /// Set user name to server
+    pub fn set_user<S: AsRef<str>>(&self, name: S) -> SmbResult<()> {
+        let cstr = utils::str_to_cstring(name)?;
+        unsafe { smbc_setUser(self.ctx, cstr.into_raw()) }
+        Ok(())
+    }
+
+    /// Get timeout from server
+    pub fn get_timeout(&self) -> SmbResult<usize> {
+        unsafe { Ok(smbc_getTimeout(self.ctx) as usize) }
+    }
+
+    /// Set timeout to server
+    pub fn set_timeout(&self, timeout: usize) -> SmbResult<()> {
+        unsafe { smbc_setTimeout(self.ctx, timeout as c_int) }
+        Ok(())
+    }
+
+    /// Get smbc version
+    pub fn get_version(&self) -> SmbResult<String> {
+        unsafe {
+            let ptr = smbc_version();
+            utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
+        }
+    }
+
+    /// Unlink file at `path`
+    pub fn unlink<S: AsRef<str>>(&self, path: S) -> SmbResult<()> {
+        todo!()
+    }
+
+    /// Rename file at `orig_url` to `new_url`
+    pub fn rename<S: AsRef<str>>(&self, orig_url: S, new_url: S) -> SmbResult<()> {
+        todo!()
+    }
+
     // -- internal private
 
     /// Build connection uri
@@ -65,6 +138,13 @@ impl SmbClient {
             },
             share
         )
+    }
+
+    pub(crate) fn get_fn<T>(
+        &self,
+        get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
+    ) -> std::io::Result<T> {
+        unsafe { get_func(self.ctx).ok_or(std::io::Error::from_raw_os_error(libc::EINVAL as i32)) }
     }
 
     /// Setup options in the context
@@ -112,6 +192,36 @@ impl SmbClient {
             utils::write_to_cstr(wg as *mut u8, wglen as usize, &workgroup);
             utils::write_to_cstr(un as *mut u8, unlen as usize, &username);
             utils::write_to_cstr(pw as *mut u8, pwlen as usize, &password);
+        }
+    }
+}
+
+impl<'a> SmbClient {
+    /// Open a file at `P` with provided options
+    pub fn open_with<P: AsRef<str>>(
+        &'a self,
+        path: P,
+        options: SmbOpenOptions,
+    ) -> SmbResult<SmbFile<'a>> {
+        trace!(target: "pavao", "open_with {:?}", options);
+
+        let open_fn = self.get_fn(smbc_getFunctionOpen)?;
+
+        let path = utils::str_to_cstring(path)?;
+        trace!(target: "pavao", "opening {:?}", path);
+
+        let fd = utils::result_from_ptr_mut(open_fn(
+            self.ctx,
+            path.as_ptr(),
+            options.to_flags(),
+            options.mode,
+        ))?;
+        if (fd as i64) < 0 {
+            error!(target: "pavao", "got a negative file descriptor");
+            Err(SmbError::BadFileDescriptor)
+        } else {
+            trace!(target: "pavao", "opened file with file descriptor {:?}", fd);
+            Ok(SmbFile::new(self, fd))
         }
     }
 }

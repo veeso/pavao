@@ -12,6 +12,8 @@ pub type SmbResult<T> = Result<T, SmbError>;
 /// Smb protocol error
 #[derive(Debug, Error)]
 pub enum SmbError {
+    #[error("server returned a bad file descriptor")]
+    BadFileDescriptor,
     #[error("server returned with a bad value")]
     BadValue,
     #[error("IO Error: {0}")]

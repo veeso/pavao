@@ -35,10 +35,6 @@ pub unsafe fn cstr<'a, T>(p: *const T) -> Cow<'a, str> {
     CStr::from_ptr(p as *const c_char).to_string_lossy()
 }
 
-pub fn cstring<P: AsRef<str>>(p: P) -> SmbResult<CString> {
-    Ok(CString::new(p.as_ref())?)
-}
-
 pub unsafe fn write_to_cstr(dest: *mut u8, len: usize, src: &str) {
     // just to ensure that it can be interpreted as c string
     *(dest.offset((len - 1) as isize)) = 0u8;
@@ -74,5 +70,41 @@ fn to_result_with_error<T: Eq + From<i8>>(t: T, err: io::Error) -> io::Result<T>
         Err(err)
     } else {
         Ok(t)
+    }
+}
+
+/// Convert a string to a `CString`
+#[inline(always)]
+pub fn str_to_cstring<P: AsRef<str>>(p: P) -> SmbResult<CString> {
+    Ok(CString::new(p.as_ref())?)
+}
+
+/// Convert char pointer to string
+#[inline(always)]
+pub fn char_ptr_to_string(ptr: *const c_char) -> Result<String, std::str::Utf8Error> {
+    let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
+    c_str.to_str().map(|x| x.to_string())
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn should_convert_str_to_cstring() {
+        assert!(str_to_cstring("Hello, World!").is_ok());
+    }
+
+    #[test]
+    fn should_convert_char_ptr_to_string() {
+        let c_str = std::ffi::CString::new("Hello, World!").unwrap();
+        let ptr = c_str.as_ptr();
+        assert_eq!(
+            char_ptr_to_string(ptr).ok().unwrap().as_str(),
+            "Hello, World!"
+        );
     }
 }
