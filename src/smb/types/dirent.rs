@@ -2,7 +2,7 @@
 //!
 //! module which exposes the smb dir entry
 
-use crate::{SmbClient, SmbError};
+use crate::SmbError;
 
 use libc::c_uint;
 

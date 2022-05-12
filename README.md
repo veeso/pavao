@@ -59,6 +59,11 @@
   - [About Pavão 🦚](#about-pavão-)
   - [Get started 🏁](#get-started-)
     - [Add pavao to your Cargo.toml 🦀](#add-pavao-to-your-cargotoml-)
+    - [Install pavao C dependencies on your system 🖥️](#install-pavao-c-dependencies-on-your-system-️)
+      - [MacOS 🍎](#macos-)
+      - [Debian based systems 🐧](#debian-based-systems-)
+      - [RedHat based systems 🐧](#redhat-based-systems-)
+      - [Build from sources 📁](#build-from-sources-)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
   - [Documentation 📚](#documentation-)
@@ -83,6 +88,53 @@ Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which
 
 ```toml
 pavao = "0.1.0"
+```
+
+### Install pavao C dependencies on your system 🖥️
+
+#### MacOS 🍎
+
+Install samba with brew:
+
+```sh
+brew install samba
+```
+
+#### Debian based systems 🐧
+
+Install libsmbclient with apt:
+
+```sh
+apt install -y libsmbclient-dev libsmbclient
+```
+
+⚠️ `libsmbclient-dev` is required only on the machine where you build the application
+
+#### RedHat based systems 🐧
+
+Install libsmbclient with dnf:
+
+```sh
+dnf install libsmbclient-devel libsmbclient
+```
+
+⚠️ `libsmbclient-devel` is required only on the machine where you build the application
+
+#### Build from sources 📁
+
+Install libsmbclient building from sources:
+
+```sh
+wget -O samba.tar.gz https://github.com/samba-team/samba/archive/refs/tags/samba-4.16.1.tar.gz
+mkdir -p samba/
+tar  xzvf samba.tar.gz -C samba/ --strip-components=1
+rm samba.tar.gz
+cd samba/
+./configure
+make
+make install
+cd ..
+rm -rf samba/
 ```
 
 ### Create a pavao application

@@ -2,8 +2,8 @@
 //!
 //! file type returned by open functions on server
 
-use super::SmbClient;
 use crate::utils;
+use crate::SmbClient;
 
 use libc::{c_int, c_void, mode_t, off_t};
 use smbclient_sys::*;

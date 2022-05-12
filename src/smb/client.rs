@@ -2,8 +2,8 @@
 //!
 //! module which exposes the Smb Client
 
-use super::{SmbCredentials, SmbFile, SmbOpenOptions, SmbOptions};
-use crate::utils;
+use super::{SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOptions, SmbStat};
+use crate::{utils, SmbDirent};
 use crate::{SmbError, SmbResult};
 
 use libc::{self, c_char, c_int, c_void, mode_t, off_t};
@@ -60,7 +60,10 @@ impl SmbClient {
     }
 
     /// Set netbios name to server
-    pub fn set_netbios_name<S: AsRef<str>>(&self, name: S) -> SmbResult<()> {
+    pub fn set_netbios_name<S>(&self, name: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
         let cstr = utils::str_to_cstring(name)?;
         unsafe { smbc_setNetbiosName(self.ctx, cstr.into_raw()) }
         Ok(())
@@ -75,7 +78,10 @@ impl SmbClient {
     }
 
     /// Set workgroup name to server
-    pub fn set_workgroup<S: AsRef<str>>(&self, name: S) -> SmbResult<()> {
+    pub fn set_workgroup<S>(&self, name: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
         let cstr = utils::str_to_cstring(name)?;
         unsafe { smbc_setWorkgroup(self.ctx, cstr.into_raw()) }
         Ok(())
@@ -90,7 +96,10 @@ impl SmbClient {
     }
 
     /// Set user name to server
-    pub fn set_user<S: AsRef<str>>(&self, name: S) -> SmbResult<()> {
+    pub fn set_user<S>(&self, name: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
         let cstr = utils::str_to_cstring(name)?;
         unsafe { smbc_setUser(self.ctx, cstr.into_raw()) }
         Ok(())
@@ -116,12 +125,108 @@ impl SmbClient {
     }
 
     /// Unlink file at `path`
-    pub fn unlink<S: AsRef<str>>(&self, path: S) -> SmbResult<()> {
+    pub fn unlink<S>(&self, path: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
         todo!()
     }
 
     /// Rename file at `orig_url` to `new_url`
-    pub fn rename<S: AsRef<str>>(&self, orig_url: S, new_url: S) -> SmbResult<()> {
+    pub fn rename<S>(&self, orig_url: S, new_url: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
+        todo!()
+    }
+
+    /// List content of directory at `path`
+    pub fn list_dir<S>(&self, path: S) -> SmbResult<Vec<SmbDirent>>
+    where
+        S: AsRef<str>,
+    {
+        todo!()
+        /*
+            int dir_fd = smbc_opendir(argv[1]);
+        fprintf(stderr, "dir_fd: %d\n", dir_fd);
+        if (dir_fd < 0)
+        {
+            die("smbc_opendir failed: %s\n", strerror(errno));
+        }
+
+        const int size = 10000;
+        char dirsbuf[size];
+        e = smbc_getdents(dir_fd, (struct smbc_dirent*) dirsbuf, size);
+        if (e == 0 || e < size)
+        {
+            fprintf(stderr, "No more dirents\n");
+        }
+        else if (e < 0)
+        {
+            die("smbc_getdents failed: %s\n", strerror(errno));
+        }
+        char* current = dirsbuf;
+        for (int i = 0; i < e; ++i)
+        {
+            struct smbc_dirent* d = (struct smbc_dirent*) current;
+            if (interesting_dirent(d))
+            {
+                char* url = calloc(1, strlen(argv[1]) + strlen(d->name) + 1);
+                strcat(url, argv[1]);
+                strcat(url, d->name);
+                fprintf(stderr, "%s\t", url);
+                struct stat fs;
+                int e = smbc_stat(url, &fs);
+                free(url);
+                if (e < 0)
+                {
+                    die("smbc_stat: failed for '%s'\n", url);
+                }
+                fprintf(stderr, " size: %ld\n", fs.st_size);
+            }
+            current += d->dirlen;
+        }
+        smbc_closedir(dir_fd);
+        */
+    }
+
+    /// Make directory at `p` with provided `mode`
+    pub fn mkdir<S>(&self, p: S, mode: SmbMode) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
+        todo!()
+    }
+
+    /// Remove directory at `p`
+    pub fn rmdir<S>(&self, p: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
+        todo!()
+    }
+
+    /// Stat file at `p` and return its metadata
+    pub fn stat<S>(&self, p: S) -> SmbResult<SmbStat>
+    where
+        S: AsRef<str>,
+    {
+        todo!()
+    }
+
+    /// Change file mode for file at `p`
+    pub fn chmod<S>(&self, p: S, mode: SmbMode) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
+        todo!()
+    }
+
+    /// Print file at `p` using the `print_queue`
+    pub fn print<S>(&self, p: S, print_queue: S) -> SmbResult<()>
+    where
+        S: AsRef<str>,
+    {
         todo!()
     }
 
@@ -140,6 +245,15 @@ impl SmbClient {
         )
     }
 
+    /// Get file uri
+    fn uri<S>(&self, p: S) -> String
+    where
+        S: AsRef<str>,
+    {
+        format!("{}{}", self.uri, p.as_ref())
+    }
+
+    /// Callback to get file descriptor
     pub(crate) fn get_fn<T>(
         &self,
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
@@ -207,7 +321,7 @@ impl<'a> SmbClient {
 
         let open_fn = self.get_fn(smbc_getFunctionOpen)?;
 
-        let path = utils::str_to_cstring(path)?;
+        let path = utils::str_to_cstring(self.uri(path))?;
         trace!(target: "pavao", "opening {:?}", path);
 
         let fd = utils::result_from_ptr_mut(open_fn(
