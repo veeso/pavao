@@ -22,7 +22,7 @@ impl<'a> SmbFile<'a> {
 
 impl<'a> Read for SmbFile<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        trace!(target: "pavao", "reading file to buf [{:?};{}]", buf.as_ptr(), buf.len());
+        trace!("reading file to buf [{:?};{}]", buf.as_ptr(), buf.len());
         let read_fn = self.smbc.get_fn(smbc_getFunctionRead)?;
         let bytes_read = utils::to_result_with_le(read_fn(
             self.smbc.ctx,
@@ -36,7 +36,7 @@ impl<'a> Read for SmbFile<'a> {
 
 impl<'a> Write for SmbFile<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        trace!(target: "pavao", "writing buf [{:?};{}] to file", buf.as_ptr(), buf.len());
+        trace!("writing buf [{:?};{}] to file", buf.as_ptr(), buf.len());
         let write_fn = self.smbc.get_fn(smbc_getFunctionWrite)?;
         let bytes_wrote = utils::to_result_with_le(write_fn(
             self.smbc.ctx,
@@ -48,14 +48,14 @@ impl<'a> Write for SmbFile<'a> {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        trace!(target: "pavao", "flush is not supported on SmbFile");
+        trace!("flush is not supported on SmbFile");
         Ok(())
     }
 }
 
 impl<'a> Seek for SmbFile<'a> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        trace!(target: "pavao", "seeking file at {:?}", pos);
+        trace!("seeking file at {:?}", pos);
         let lseek_fn = self.smbc.get_fn(smbc_getFunctionLseek)?;
         let (whence, off) = match pos {
             SeekFrom::Start(p) => (libc::SEEK_SET, p as off_t),
@@ -70,7 +70,7 @@ impl<'a> Seek for SmbFile<'a> {
 
 impl<'a> Drop for SmbFile<'a> {
     fn drop(&mut self) {
-        trace!(target: "pavao", "closing file");
+        trace!("closing file");
         if let Ok(close_fn) = self.smbc.get_fn(smbc_getFunctionClose) {
             close_fn(self.smbc.ctx, self.fd);
         }
@@ -148,7 +148,7 @@ impl SmbOpenOptions {
     }
 
     /// Naive impl, rewrite to check for incompatible flags
-    pub(crate) fn to_flags(&self) -> c_int {
+    pub(crate) fn to_flags(self) -> c_int {
         let base_mode = match (self.read, self.write) {
             // defaults to read only
             (false, false) | (true, false) => libc::O_RDONLY,

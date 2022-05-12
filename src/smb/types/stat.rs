@@ -39,15 +39,15 @@ pub struct SmbStat {
 impl From<stat> for SmbStat {
     fn from(s: stat) -> Self {
         Self {
-            accessed: SystemTime::from(i64_to_system_time(s.st_atime)),
+            accessed: i64_to_system_time(s.st_atime),
             blocks: s.st_blocks,
             blksize: s.st_blksize,
-            created: SystemTime::from(i64_to_system_time(s.st_ctime)),
+            created: i64_to_system_time(s.st_ctime),
             dev: s.st_dev,
             gen: s.st_gen,
             gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
-            modified: SystemTime::from(i64_to_system_time(s.st_mtime)),
+            modified: i64_to_system_time(s.st_mtime),
             nlink: s.st_nlink,
             rdev: s.st_rdev,
             size: s.st_size,

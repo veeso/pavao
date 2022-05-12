@@ -2,6 +2,8 @@
 //!
 //! utilities module
 
+use crate::SmbError;
+
 use super::SmbResult;
 
 use libc::{c_char, c_int};
@@ -21,24 +23,14 @@ pub fn result_from_ptr_mut<T>(ptr: *mut T) -> io::Result<*mut T> {
     }
 }
 
-#[inline(always)]
-/// Ok(ptr) for non-null ptr or Err(last_os_error) otherwise
-pub fn result_from_ptr<T>(ptr: *const T) -> io::Result<*const T> {
-    if ptr.is_null() {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(ptr)
-    }
-}
-
 pub unsafe fn cstr<'a, T>(p: *const T) -> Cow<'a, str> {
     CStr::from_ptr(p as *const c_char).to_string_lossy()
 }
 
 pub unsafe fn write_to_cstr(dest: *mut u8, len: usize, src: &str) {
     // just to ensure that it can be interpreted as c string
-    *(dest.offset((len - 1) as isize)) = 0u8;
-    trace!(target: "smbc", "orig: {:?}", cstr(dest));
+    *dest.add(len - 1) = 0u8;
+    trace!("orig: {:?}", cstr(dest));
 
     let mut buf = slice::from_raw_parts_mut(dest, len);
     let mut idx = buf.write(src.as_bytes()).unwrap();
@@ -49,7 +41,31 @@ pub unsafe fn write_to_cstr(dest: *mut u8, len: usize, src: &str) {
     buf = slice::from_raw_parts_mut(dest, len);
     buf[idx] = 0u8;
 
-    trace!(target: "smbc", "write to [{:p};{}] from [{:p},{}]: {:?}", dest, len, src.as_ptr(), src.len(), cstr(dest));
+    trace!(
+        "write to [{:p};{}] from [{:p},{}]: {:?}",
+        dest,
+        len,
+        src.as_ptr(),
+        src.len(),
+        cstr(dest)
+    );
+}
+
+/// Get last os error
+#[inline(always)]
+pub fn last_os_error() -> SmbError {
+    SmbError::Io(io::Error::last_os_error())
+}
+
+/// Given the return value of a smb function, it returns the last OS error in case the ret_val is equal to -1
+/// otherwise return `Ok(ok_val)`
+#[inline(always)]
+pub fn to_result_with_ioerror<T, U: Eq + From<i8>>(ok_val: T, ret_val: U) -> SmbResult<T> {
+    if ret_val == U::from(-1) {
+        Err(io::Error::last_os_error().into())
+    } else {
+        Ok(ok_val)
+    }
 }
 
 #[inline(always)]

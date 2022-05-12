@@ -6,14 +6,13 @@ use super::{SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOptions, SmbSta
 use crate::{utils, SmbDirent};
 use crate::{SmbError, SmbResult};
 
-use libc::{self, c_char, c_int, c_void, mode_t, off_t};
+use libc::{self, c_char, c_int, c_uint, c_void};
 use smbclient_sys::{SMBCCTX as SmbContext, *};
 use std::mem;
 use std::panic;
 use std::ptr;
 
-const SMBC_FALSE: smbc_bool = 0;
-const SMBC_TRUE: smbc_bool = 1;
+// TODO: add logs
 
 /// Smb protocol client
 pub struct SmbClient {
@@ -64,8 +63,8 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        let cstr = utils::str_to_cstring(name)?;
-        unsafe { smbc_setNetbiosName(self.ctx, cstr.into_raw()) }
+        let name = utils::str_to_cstring(name)?;
+        unsafe { smbc_setNetbiosName(self.ctx, name.into_raw()) }
         Ok(())
     }
 
@@ -82,8 +81,8 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        let cstr = utils::str_to_cstring(name)?;
-        unsafe { smbc_setWorkgroup(self.ctx, cstr.into_raw()) }
+        let name = utils::str_to_cstring(name)?;
+        unsafe { smbc_setWorkgroup(self.ctx, name.into_raw()) }
         Ok(())
     }
 
@@ -100,8 +99,8 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        let cstr = utils::str_to_cstring(name)?;
-        unsafe { smbc_setUser(self.ctx, cstr.into_raw()) }
+        let name = utils::str_to_cstring(name)?;
+        unsafe { smbc_setUser(self.ctx, name.into_raw()) }
         Ok(())
     }
 
@@ -129,7 +128,8 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        let path = utils::str_to_cstring(self.uri(path))?;
+        unsafe { utils::to_result_with_ioerror((), smbc_unlink(path.as_ptr())) }
     }
 
     /// Rename file at `orig_url` to `new_url`
@@ -137,7 +137,11 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        let orig_url = utils::str_to_cstring(self.uri(orig_url))?;
+        let new_url = utils::str_to_cstring(self.uri(new_url))?;
+        unsafe {
+            utils::to_result_with_ioerror((), smbc_rename(orig_url.as_ptr(), new_url.as_ptr()))
+        }
     }
 
     /// List content of directory at `path`
@@ -145,49 +149,62 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
-        /*
-            int dir_fd = smbc_opendir(argv[1]);
-        fprintf(stderr, "dir_fd: %d\n", dir_fd);
-        if (dir_fd < 0)
-        {
-            die("smbc_opendir failed: %s\n", strerror(errno));
-        }
-
-        const int size = 10000;
-        char dirsbuf[size];
-        e = smbc_getdents(dir_fd, (struct smbc_dirent*) dirsbuf, size);
-        if (e == 0 || e < size)
-        {
-            fprintf(stderr, "No more dirents\n");
-        }
-        else if (e < 0)
-        {
-            die("smbc_getdents failed: %s\n", strerror(errno));
-        }
-        char* current = dirsbuf;
-        for (int i = 0; i < e; ++i)
-        {
-            struct smbc_dirent* d = (struct smbc_dirent*) current;
-            if (interesting_dirent(d))
-            {
-                char* url = calloc(1, strlen(argv[1]) + strlen(d->name) + 1);
-                strcat(url, argv[1]);
-                strcat(url, d->name);
-                fprintf(stderr, "%s\t", url);
-                struct stat fs;
-                int e = smbc_stat(url, &fs);
-                free(url);
-                if (e < 0)
-                {
-                    die("smbc_stat: failed for '%s'\n", url);
-                }
-                fprintf(stderr, " size: %ld\n", fs.st_size);
+        let path = utils::str_to_cstring(self.uri(path))?;
+        unsafe {
+            let fd = smbc_opendir(path.as_ptr());
+            if fd < 0 {
+                error!("failed to open directory: returned a bad file descriptor");
+                return Err(SmbError::BadFileDescriptor);
             }
-            current += d->dirlen;
+            // seek directory
+            if smbc_lseekdir(fd, libc::SEEK_END.into()) < 0 {
+                let _ = smbc_closedir(fd);
+                error!(
+                    "could not seek directory to the end: {}",
+                    utils::last_os_error()
+                );
+                return Err(utils::last_os_error());
+            }
+            // tell directory
+            let dir_size = smbc_telldir(fd);
+            if dir_size < 0 {
+                let _ = smbc_closedir(fd);
+                error!(
+                    "could not get directory structure size: {}",
+                    utils::last_os_error()
+                );
+                return Err(utils::last_os_error());
+            }
+            // Calculate directory size
+            let dir_size = dir_size as usize / mem::size_of::<smbc_dirent>();
+            trace!("dir_size buffer is {}", dir_size);
+            // rewind
+            if smbc_lseekdir(fd, libc::SEEK_SET.into()) < 0 {
+                let _ = smbc_closedir(fd);
+                error!(
+                    "could not rewind directory structure: {}",
+                    utils::last_os_error()
+                );
+                return Err(utils::last_os_error());
+            }
+            // Allocate directory buffer
+            let mut buffer: Vec<smbc_dirent> = Vec::with_capacity(dir_size);
+            // Get dirents
+            let count = smbc_getdents(fd as c_uint, buffer.as_mut_ptr(), i32::MAX);
+            if count < 0 {
+                let _ = smbc_closedir(fd);
+                error!(
+                    "could not get directory entries: {}",
+                    utils::last_os_error()
+                );
+                return Err(utils::last_os_error());
+            }
+            trace!("found {} entries", count);
+            let directories = buffer.into_iter().flat_map(SmbDirent::try_from).collect();
+            // Close directory
+            let _ = smbc_closedir(fd);
+            Ok(directories)
         }
-        smbc_closedir(dir_fd);
-        */
     }
 
     /// Make directory at `p` with provided `mode`
@@ -195,7 +212,8 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        let p = utils::str_to_cstring(self.uri(p))?;
+        unsafe { utils::to_result_with_ioerror((), smbc_mkdir(p.as_ptr(), mode.into())) }
     }
 
     /// Remove directory at `p`
@@ -203,7 +221,8 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        let p = utils::str_to_cstring(self.uri(p))?;
+        unsafe { utils::to_result_with_ioerror((), smbc_rmdir(p.as_ptr())) }
     }
 
     /// Stat file at `p` and return its metadata
@@ -211,7 +230,17 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        trace!("Stating file at {}", p.as_ref());
+        let p = utils::str_to_cstring(self.uri(p))?;
+        unsafe {
+            let mut st: libc::stat = mem::zeroed();
+            if smbc_stat(p.as_ptr(), &mut st) < 0 {
+                error!("failed to stat file: {}", utils::last_os_error());
+                Err(utils::last_os_error())
+            } else {
+                Ok(SmbStat::from(st))
+            }
+        }
     }
 
     /// Change file mode for file at `p`
@@ -219,7 +248,9 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        trace!("changing mode for {} with {:?}", p.as_ref(), mode);
+        let p = utils::str_to_cstring(self.uri(p))?;
+        unsafe { utils::to_result_with_ioerror((), smbc_chmod(p.as_ptr(), mode.into())) }
     }
 
     /// Print file at `p` using the `print_queue`
@@ -227,7 +258,12 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        todo!()
+        trace!("printing {} to {} queue", p.as_ref(), print_queue.as_ref());
+        let p = utils::str_to_cstring(self.uri(p))?;
+        let print_queue = utils::str_to_cstring(self.uri(print_queue))?;
+        unsafe {
+            utils::to_result_with_ioerror((), smbc_print_file(p.as_ptr(), print_queue.as_ptr()))
+        }
     }
 
     // -- internal private
@@ -258,14 +294,16 @@ impl SmbClient {
         &self,
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
     ) -> std::io::Result<T> {
-        unsafe { get_func(self.ctx).ok_or(std::io::Error::from_raw_os_error(libc::EINVAL as i32)) }
+        unsafe {
+            get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL as i32))
+        }
     }
 
     /// Setup options in the context
     unsafe fn setup_options(ctx: *mut SMBCCTX, options: SmbOptions) {
         smbc_setOptionBrowseMaxLmbCount(ctx, options.browser_max_lmb_count);
         smbc_setOptionCaseSensitive(ctx, options.case_sensitive as i32);
-        smbc_setOptionDebugToStderr(ctx, SMBC_FALSE);
+        smbc_setOptionDebugToStderr(ctx, 0);
         smbc_setOptionFallbackAfterKerberos(ctx, options.fallback_after_kerberos as i32);
         smbc_setOptionNoAutoAnonymousLogin(ctx, options.no_auto_anonymous_login as i32);
         smbc_setOptionOneSharePerServer(ctx, options.one_share_per_server as i32);
@@ -293,16 +331,16 @@ impl SmbClient {
         unsafe {
             let srv = utils::cstr(srv);
             let shr = utils::cstr(shr);
-            trace!(target: "pavao", "authenticating on {}\\{}", &srv, &shr);
+            trace!("authenticating on {}\\{}", &srv, &shr);
 
-            let auth: &F = mem::transmute(smbc_getOptionUserData(ctx) as *const c_void);
+            let auth: &F = &*(smbc_getOptionUserData(ctx) as *const c_void as *const F);
             let auth = panic::AssertUnwindSafe(auth);
             let (workgroup, username, password) = panic::catch_unwind(|| {
-                trace!(target: "pavao", "auth with {:?}\\{:?}", srv, shr);
+                trace!("auth with {:?}\\{:?}", srv, shr);
                 auth(&srv, &shr)
             })
             .unwrap();
-            trace!(target: "pavao", "cred: {}\\{} {}", &workgroup, &username, &password);
+            trace!("cred: {}\\{} {}", &workgroup, &username, &password);
             utils::write_to_cstr(wg as *mut u8, wglen as usize, &workgroup);
             utils::write_to_cstr(un as *mut u8, unlen as usize, &username);
             utils::write_to_cstr(pw as *mut u8, pwlen as usize, &password);
@@ -317,13 +355,9 @@ impl<'a> SmbClient {
         path: P,
         options: SmbOpenOptions,
     ) -> SmbResult<SmbFile<'a>> {
-        trace!(target: "pavao", "open_with {:?}", options);
-
+        trace!("opening {} with {:?}", path.as_ref(), options);
         let open_fn = self.get_fn(smbc_getFunctionOpen)?;
-
         let path = utils::str_to_cstring(self.uri(path))?;
-        trace!(target: "pavao", "opening {:?}", path);
-
         let fd = utils::result_from_ptr_mut(open_fn(
             self.ctx,
             path.as_ptr(),
@@ -331,10 +365,10 @@ impl<'a> SmbClient {
             options.mode,
         ))?;
         if (fd as i64) < 0 {
-            error!(target: "pavao", "got a negative file descriptor");
+            error!("got a negative file descriptor");
             Err(SmbError::BadFileDescriptor)
         } else {
-            trace!(target: "pavao", "opened file with file descriptor {:?}", fd);
+            trace!("opened file with file descriptor {:?}", fd);
             Ok(SmbFile::new(self, fd))
         }
     }
@@ -343,16 +377,123 @@ impl<'a> SmbClient {
 // -- destructor
 impl Drop for SmbClient {
     fn drop(&mut self) {
-        trace!(target: "pavao", "closing smbclient");
+        trace!("closing smbclient");
         unsafe {
-            smbc_free_context(self.ctx, 1 as c_int);
+            smbc_free_context(self.ctx, 1_i32);
         }
+        trace!("smbclient context freed");
     }
 }
 
 #[cfg(test)]
+#[cfg(feature = "with-containers")]
 mod test {
     use super::*;
 
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn should_initialize_client() {
+        todo!();
+    }
+
+    #[test]
+    fn should_get_netbios() {
+        todo!();
+    }
+
+    #[test]
+    fn should_set_netbios() {
+        todo!();
+    }
+
+    #[test]
+    fn should_get_workgroup() {
+        todo!();
+    }
+
+    #[test]
+    fn should_set_workgroup() {
+        todo!();
+    }
+
+    #[test]
+    fn should_get_user() {
+        todo!();
+    }
+
+    #[test]
+    fn should_set_user() {
+        todo!();
+    }
+
+    #[test]
+    fn should_get_timeout() {
+        todo!();
+    }
+
+    #[test]
+    fn should_set_timeout() {
+        todo!();
+    }
+
+    #[test]
+    fn should_get_version() {
+        todo!();
+    }
+
+    #[test]
+    fn should_unlink() {
+        todo!();
+    }
+
+    #[test]
+    fn should_rename() {
+        todo!();
+    }
+
+    #[test]
+    fn should_list_dir() {
+        todo!();
+    }
+
+    #[test]
+    fn should_mkdir() {
+        todo!();
+    }
+
+    #[test]
+    fn should_rmdir() {
+        todo!();
+    }
+
+    #[test]
+    fn should_stat() {
+        todo!();
+    }
+
+    #[test]
+    fn should_chmod() {
+        todo!();
+    }
+
+    #[test]
+    fn should_build_uri() {
+        todo!();
+    }
+
+    #[test]
+    fn should_read_file() {
+        todo!();
+    }
+
+    #[test]
+    fn should_write_file() {
+        todo!();
+    }
+
+    #[test]
+    fn should_append_to_file() {
+        todo!();
+    }
 }
