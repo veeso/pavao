@@ -5,3 +5,6 @@ services:
     ports:
       - "139:139"
       - "445:445"
+    volumes:
+      - /tmp:/mnt/tmp
+    command: samba.sh -u "test;test" -s "temp;/mnt/tmp" -w pavao

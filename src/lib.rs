@@ -34,3 +34,7 @@ pub use smb::{
     SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbEncryptionLevel, SmbFile, SmbMode,
     SmbModeClass, SmbOpenOptions, SmbOptions, SmbShareMode, SmbStat,
 };
+
+// -- mock
+#[cfg(test)]
+pub(crate) mod mock;

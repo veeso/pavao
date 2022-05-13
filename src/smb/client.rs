@@ -22,10 +22,7 @@ pub struct SmbClient {
 
 impl SmbClient {
     /// Initialize a new `SmbClient` with the provided credentials to connect to the remote smb server
-    pub fn new<F>(credentials: SmbCredentials, options: SmbOptions) -> SmbResult<Self>
-    where
-        F: Fn(&str, &str) -> (String, String, String),
-    {
+    pub fn new(credentials: SmbCredentials, options: SmbOptions) -> SmbResult<Self> {
         let mut smbc = SmbClient {
             ctx: ptr::null_mut(),
             uri: Self::build_uri(&credentials),
@@ -42,7 +39,7 @@ impl SmbClient {
             let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
             // set options
             smbc_setOptionUserData(ctx, &auth_fn as *const _ as *mut c_void);
-            smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper::<F>));
+            smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
             Self::setup_options(ctx, options);
             // set ctx
             smbc.ctx = utils::result_from_ptr_mut(smbc_init_context(ctx))?;
@@ -315,7 +312,7 @@ impl SmbClient {
     }
 
     /// Auth wrapper passed to `SMBCCTX` to authenticate requests to SMB servers.
-    extern "C" fn auth_wrapper<F>(
+    extern "C" fn auth_wrapper(
         ctx: *mut SMBCCTX,
         srv: *const c_char,
         shr: *const c_char,
@@ -325,15 +322,14 @@ impl SmbClient {
         unlen: c_int,
         pw: *mut c_char,
         pwlen: c_int,
-    ) where
-        F: Fn(&str, &str) -> (String, String, String),
-    {
+    ) {
+        type F = dyn Fn(&str, &str) -> (String, String, String);
         unsafe {
             let srv = utils::cstr(srv);
             let shr = utils::cstr(shr);
             trace!("authenticating on {}\\{}", &srv, &shr);
 
-            let auth: &F = &*(smbc_getOptionUserData(ctx) as *const c_void as *const F);
+            let auth: &F = &*(smbc_getOptionUserData(ctx) as *const c_void as *const &F);
             let auth = panic::AssertUnwindSafe(auth);
             let (workgroup, username, password) = panic::catch_unwind(|| {
                 trace!("auth with {:?}\\{:?}", srv, shr);
@@ -389,111 +385,174 @@ impl Drop for SmbClient {
 #[cfg(feature = "with-containers")]
 mod test {
     use super::*;
+    use crate::mock;
 
     use pretty_assertions::assert_eq;
+    use serial_test::serial;
+    use std::io::Cursor;
+    use std::time::SystemTime;
 
     #[test]
+    #[serial]
     fn should_initialize_client() {
-        todo!();
+        mock::logger();
+        let client = init_client();
+        assert_eq!(client.uri.as_str(), "smb://localhost/temp");
+        assert_eq!(client.ctx.is_null(), false);
     }
 
     #[test]
+    #[serial]
     fn should_get_netbios() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_set_netbios() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_get_workgroup() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_set_workgroup() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_get_user() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_set_user() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_get_timeout() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_set_timeout() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_get_version() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_unlink() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_rename() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_list_dir() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_mkdir() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_rmdir() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_stat() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_chmod() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_build_uri() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_read_file() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_write_file() {
+        mock::logger();
         todo!();
     }
 
     #[test]
+    #[serial]
     fn should_append_to_file() {
+        mock::logger();
         todo!();
+    }
+
+    fn init_client() -> SmbClient {
+        SmbClient::new(
+            SmbCredentials::default()
+                .server("smb://localhost")
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default()
+                .case_sensitive(true)
+                .one_share_per_server(true),
+        )
+        .unwrap()
     }
 }
