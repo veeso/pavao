@@ -15,12 +15,11 @@ pub struct SmbStat {
     /// Blocks occupied by file
     pub blocks: i64,
     /// Block size
-    pub blksize: i32,
+    pub blksize: i64,
     /// Creation time
     pub created: SystemTime,
     /// Device
     pub dev: i32,
-    pub gen: u32,
     /// Group id
     pub gid: u32,
     /// Unix permissions
@@ -28,10 +27,10 @@ pub struct SmbStat {
     /// Modify time
     pub modified: SystemTime,
     /// Link associated to file
-    pub nlink: u16,
-    pub rdev: i32,
+    pub nlink: u64,
+    pub rdev: u64,
     /// File size in bytes
-    pub size: i64,
+    pub size: u64,
     /// User id
     pub uid: u32,
 }
@@ -40,18 +39,17 @@ impl From<stat> for SmbStat {
     fn from(s: stat) -> Self {
         Self {
             accessed: i64_to_system_time(s.st_atime),
-            blocks: s.st_blocks,
-            blksize: s.st_blksize,
+            blocks: s.st_blocks as i64,
+            blksize: s.st_blksize as i64,
             created: i64_to_system_time(s.st_ctime),
-            dev: s.st_dev,
-            gen: s.st_gen,
-            gid: s.st_gid,
+            dev: s.st_dev as i32,
+            gid: s.st_gid as u32,
             mode: SmbMode::from(s.st_mode),
             modified: i64_to_system_time(s.st_mtime),
-            nlink: s.st_nlink,
-            rdev: s.st_rdev,
-            size: s.st_size,
-            uid: s.st_uid,
+            nlink: s.st_nlink as u64,
+            rdev: s.st_rdev as u64,
+            size: s.st_size as u64,
+            uid: s.st_uid as u32,
         }
     }
 }
