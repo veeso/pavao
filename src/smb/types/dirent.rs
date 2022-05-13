@@ -38,9 +38,8 @@ impl TryFrom<smbc_dirent> for SmbDirent {
     type Error = SmbError;
 
     fn try_from(d: smbc_dirent) -> Result<Self, Self::Error> {
-        let comment = char_ptr_to_string(d.comment).map_err(|_| SmbError::BadValue)?;
-        let name =
-            char_ptr_to_string(d.name.as_slice().as_ptr()).map_err(|_| SmbError::BadValue)?;
+        let comment = char_ptr_to_string(d.comment)?;
+        let name = char_ptr_to_string(d.name.as_slice().as_ptr())?;
         Ok(Self {
             type_: SmbDirentType::try_from(d.smbc_type)?,
             comment,
@@ -50,7 +49,7 @@ impl TryFrom<smbc_dirent> for SmbDirent {
 }
 
 /// Type of directory entity in the smb protocol
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SmbDirentType {
     Workgroup,
     Server,
@@ -102,26 +101,71 @@ impl TryFrom<c_uint> for SmbDirentType {
 mod test {
 
     use super::*;
+    use crate::utils;
 
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn should_initialize_dirent() {
-        todo!();
-    }
-
-    #[test]
     fn should_convert_dirent_type_to_uint() {
-        todo!();
+        assert_eq!(c_uint::from(SmbDirentType::Workgroup), 1);
+        assert_eq!(c_uint::from(SmbDirentType::Server), 2);
+        assert_eq!(c_uint::from(SmbDirentType::FileShare), 3);
+        assert_eq!(c_uint::from(SmbDirentType::PrinterShare), 4);
+        assert_eq!(c_uint::from(SmbDirentType::CommsShare), 5);
+        assert_eq!(c_uint::from(SmbDirentType::IpcShare), 6);
+        assert_eq!(c_uint::from(SmbDirentType::Dir), 7);
+        assert_eq!(c_uint::from(SmbDirentType::File), 8);
+        assert_eq!(c_uint::from(SmbDirentType::Link), 9);
     }
 
     #[test]
     fn should_convert_uint_to_dirent_type() {
-        todo!();
+        assert_eq!(
+            SmbDirentType::try_from(1).unwrap(),
+            SmbDirentType::Workgroup
+        );
+        assert_eq!(SmbDirentType::try_from(2).unwrap(), SmbDirentType::Server);
+        assert_eq!(
+            SmbDirentType::try_from(3).unwrap(),
+            SmbDirentType::FileShare
+        );
+        assert_eq!(
+            SmbDirentType::try_from(4).unwrap(),
+            SmbDirentType::PrinterShare
+        );
+        assert_eq!(
+            SmbDirentType::try_from(5).unwrap(),
+            SmbDirentType::CommsShare
+        );
+        assert_eq!(SmbDirentType::try_from(6).unwrap(), SmbDirentType::IpcShare);
+        assert_eq!(SmbDirentType::try_from(7).unwrap(), SmbDirentType::Dir);
+        assert_eq!(SmbDirentType::try_from(8).unwrap(), SmbDirentType::File);
+        assert_eq!(SmbDirentType::try_from(9).unwrap(), SmbDirentType::Link);
+    }
+
+    #[test]
+    fn should_not_convert_bad_dirent_type() {
+        assert!(SmbDirentType::try_from(100).is_err());
     }
 
     #[test]
     fn should_convert_dirent_to_smb_dirent() {
-        todo!()
+        let mut dirent = smbc_dirent::default();
+        let comment = String::from("test");
+        let comment_ptr = utils::str_to_cstring(comment).unwrap();
+        dirent.smbc_type = 8;
+        dirent.comment = comment_ptr.into_raw();
+        dirent.commentlen = 5;
+        dirent.name = ['c' as i8];
+        dirent.namelen = 1;
+        let dirent = SmbDirent::try_from(dirent).unwrap();
+        assert_eq!(dirent.get_type(), SmbDirentType::File);
+        assert_eq!(dirent.name(), "c");
+        assert_eq!(dirent.comment(), "test");
+    }
+
+    #[test]
+    fn should_fail_conversion_from_smbc_dirent() {
+        assert!(SmbDirent::try_from(smbc_dirent::default()).is_err());
     }
 }

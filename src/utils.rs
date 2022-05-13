@@ -97,9 +97,15 @@ pub fn str_to_cstring<P: AsRef<str>>(p: P) -> SmbResult<CString> {
 
 /// Convert char pointer to string
 #[inline(always)]
-pub fn char_ptr_to_string(ptr: *const c_char) -> Result<String, std::str::Utf8Error> {
+pub fn char_ptr_to_string(ptr: *const c_char) -> SmbResult<String> {
+    if ptr.is_null() {
+        return Err(SmbError::BadValue);
+    }
     let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
-    c_str.to_str().map(|x| x.to_string())
+    c_str
+        .to_str()
+        .map(|x| x.to_string())
+        .map_err(|_| SmbError::BadValue)
 }
 
 #[cfg(test)]

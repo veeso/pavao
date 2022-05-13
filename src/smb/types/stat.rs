@@ -38,14 +38,14 @@ pub struct SmbStat {
 impl From<stat> for SmbStat {
     fn from(s: stat) -> Self {
         Self {
-            accessed: i64_to_system_time(s.st_atime),
+            accessed: time_t_to_system_time(s.st_atime),
             blocks: s.st_blocks as i64,
             blksize: s.st_blksize as i64,
-            created: i64_to_system_time(s.st_ctime),
+            created: time_t_to_system_time(s.st_ctime),
             dev: s.st_dev as i32,
             gid: s.st_gid as u32,
             mode: SmbMode::from(s.st_mode),
-            modified: i64_to_system_time(s.st_mtime),
+            modified: time_t_to_system_time(s.st_mtime),
             nlink: s.st_nlink as u64,
             rdev: s.st_rdev as u64,
             size: s.st_size as u64,
@@ -54,7 +54,7 @@ impl From<stat> for SmbStat {
     }
 }
 
-fn i64_to_system_time(t: time_t) -> SystemTime {
+fn time_t_to_system_time(t: time_t) -> SystemTime {
     UNIX_EPOCH
         .checked_add(Duration::from_secs(t as u64))
         .unwrap_or(UNIX_EPOCH)
@@ -65,10 +65,10 @@ mod test {
 
     use super::*;
 
-    use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_ne;
 
     #[test]
-    fn should_convert_libc_stat_into_smbstat() {
-        todo!()
+    fn should_convert_time_t_into_system_time() {
+        assert_ne!(time_t_to_system_time(1000), UNIX_EPOCH);
     }
 }

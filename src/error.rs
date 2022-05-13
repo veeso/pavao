@@ -22,6 +22,18 @@ pub enum SmbError {
     NulInPath(NulError),
 }
 
+impl PartialEq for SmbError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::BadFileDescriptor, Self::BadFileDescriptor) => true,
+            (Self::BadValue, Self::BadValue) => true,
+            (Self::Io(io), Self::Io(io2)) => io.kind() == io2.kind(),
+            (Self::NulInPath(e), Self::NulInPath(e2)) => e == e2,
+            (_, _) => false,
+        }
+    }
+}
+
 impl From<IoError> for SmbError {
     fn from(e: IoError) -> Self {
         Self::Io(e)

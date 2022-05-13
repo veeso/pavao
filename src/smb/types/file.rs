@@ -176,27 +176,30 @@ mod test {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn should_read_file() {
-        todo!()
-    }
-
-    #[test]
-    fn should_write_file() {
-        todo!()
-    }
-
-    #[test]
-    fn should_seek_file() {
-        todo!()
-    }
-
-    #[test]
     fn should_initialize_open_options() {
-        todo!()
+        let open_opts = SmbOpenOptions::default();
+        assert_eq!(open_opts.read, false);
+        assert_eq!(open_opts.write, false);
+        assert_eq!(open_opts.mode, 0o644);
+        assert_eq!(open_opts.to_flags(), 0);
     }
 
     #[test]
     fn should_set_open_options() {
-        todo!()
+        let open_opts = SmbOpenOptions::default()
+            .read(true)
+            .write(true)
+            .append(true)
+            .exclusive(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o755);
+        assert_eq!(open_opts.read, true);
+        assert_eq!(open_opts.write, true);
+        assert_eq!(open_opts.mode, 0o755);
+        assert_eq!(
+            open_opts.to_flags(),
+            libc::O_RDWR | libc::O_TRUNC | libc::O_APPEND | libc::O_EXCL | libc::O_CREAT
+        );
     }
 }

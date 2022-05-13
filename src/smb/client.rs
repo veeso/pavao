@@ -385,7 +385,7 @@ impl Drop for SmbClient {
 #[cfg(feature = "with-containers")]
 mod test {
     use super::*;
-    use crate::mock;
+    use crate::{mock, SmbDirentType};
 
     use pretty_assertions::assert_eq;
     use serial_test::serial;
@@ -399,6 +399,7 @@ mod test {
         let client = init_client();
         assert_eq!(client.uri.as_str(), "smb://localhost/temp");
         assert_eq!(client.ctx.is_null(), false);
+        finalize_client(client);
     }
 
     #[test]
@@ -542,7 +543,7 @@ mod test {
     }
 
     fn init_client() -> SmbClient {
-        SmbClient::new(
+        let client = SmbClient::new(
             SmbCredentials::default()
                 .server("smb://localhost")
                 .share("/temp")
@@ -553,6 +554,24 @@ mod test {
                 .case_sensitive(true)
                 .one_share_per_server(true),
         )
-        .unwrap()
+        .unwrap();
+        // make test dir
+        assert!(client.mkdir("/test", SmbMode::from(0o644)).is_ok());
+        client
+    }
+
+    fn finalize_client(client: SmbClient) {
+        remove_dir_all(&client, "/test");
+        drop(client);
+    }
+
+    fn remove_dir_all<S: AsRef<str>>(client: &SmbClient, dir: S) {
+        let entries = client.list_dir(dir.as_ref()).unwrap();
+        for d in entries.into_iter() {
+            if d.get_type() == SmbDirentType::Dir {
+                remove_dir_all(client, d.name());
+            }
+        }
+        assert!(client.rmdir(dir).is_ok());
     }
 }
