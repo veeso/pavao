@@ -545,7 +545,7 @@ mod test {
     fn init_client() -> SmbClient {
         let client = SmbClient::new(
             SmbCredentials::default()
-                .server("smb://localhost")
+                .server("smb://localhost:3139")
                 .share("/temp")
                 .username("test")
                 .password("test")

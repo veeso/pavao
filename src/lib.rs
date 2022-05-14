@@ -14,11 +14,9 @@
 
 #![doc(html_playground_url = "https://play.rust-lang.org")]
 #![doc(
-    html_favicon_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/cargo/pavao-128.png"
+    html_favicon_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/pavao.png"
 )]
-#![doc(
-    html_logo_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/cargo/pavao-512.png"
-)]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/pavao.png")]
 
 #[macro_use]
 extern crate log;
