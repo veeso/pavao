@@ -3,8 +3,8 @@ services:
   samba:
     image: dperson/samba
     ports:
-      - "3139:139"
-      - "3445:445"
+      - "139:139"
+      - "445:445"
     volumes:
       - /tmp:/mnt/tmp
     command: samba.sh -u "test;test" -s "temp;/mnt/tmp" -w pavao

@@ -426,7 +426,7 @@ mod test {
     fn should_initialize_client() {
         mock::logger();
         let client = init_client();
-        assert_eq!(client.uri.as_str(), "smb://localhost:3139/temp");
+        assert_eq!(client.uri.as_str(), "smb://localhost/temp");
         assert_eq!(client.ctx.is_null(), false);
         finalize_client(client);
     }
@@ -576,7 +576,7 @@ mod test {
     fn init_client() -> SmbClient {
         let client = SmbClient::new(
             SmbCredentials::default()
-                .server("smb://localhost:3139")
+                .server("localhost")
                 .share("/temp")
                 .username("test")
                 .password("test")

@@ -13,10 +13,12 @@ pub struct AuthService {
 
 impl AuthService {
     pub fn insert<S: AsRef<str>>(&mut self, uuid: S, creds: SmbCredentials) {
+        trace!("new credentials for {}", uuid.as_ref());
         self.credentials.insert(uuid.as_ref().to_string(), creds);
     }
 
     pub fn remove<S: AsRef<str>>(&mut self, uuid: S) {
+        trace!("removed credentials for {}", uuid.as_ref());
         self.credentials.remove(uuid.as_ref());
     }
 
