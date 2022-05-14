@@ -1,7 +1,7 @@
 # Pavão
 
 <p align="center">
-  <img src="docs/images/pavao.png" width="256" height="256" />
+  <img src="docs/images/pavao.png" width="128" height="128" />
 </p>
 
 <p align="center">~ A Rust client library for SMB ~</p>
