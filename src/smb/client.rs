@@ -2,17 +2,19 @@
 //!
 //! module which exposes the Smb Client
 
-use super::{SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOptions, SmbStat};
+use super::{AuthService, SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOptions, SmbStat};
 use crate::{utils, SmbDirent};
 use crate::{SmbError, SmbResult};
 
-use libc::{self, c_char, c_int, c_uint, c_void};
+use libc::{self, c_char, c_int, c_uint};
 use smbclient_sys::{SMBCCTX as SmbContext, *};
 use std::mem;
-use std::panic;
 use std::ptr;
+use std::sync::Mutex;
 
-// TODO: add logs
+lazy_static! {
+    static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
+}
 
 /// Smb protocol client
 pub struct SmbClient {
@@ -23,32 +25,33 @@ pub struct SmbClient {
 impl SmbClient {
     /// Initialize a new `SmbClient` with the provided credentials to connect to the remote smb server
     pub fn new(credentials: SmbCredentials, options: SmbOptions) -> SmbResult<Self> {
+        let uri = Self::build_uri(credentials.server.as_str(), credentials.share.as_str());
         let mut smbc = SmbClient {
             ctx: ptr::null_mut(),
-            uri: Self::build_uri(&credentials),
+            uri,
         };
-        let auth_fn = |_: &str, _: &str| -> (String, String, String) {
-            (
-                credentials.workgroup,
-                credentials.username,
-                credentials.password,
-            )
-        };
-
+        // insert credentials
+        trace!("creating context...");
         unsafe {
             let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
             // set options
-            smbc_setOptionUserData(ctx, &auth_fn as *const _ as *mut c_void);
+            trace!("configuring client options");
             smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
             Self::setup_options(ctx, options);
             // set ctx
             smbc.ctx = utils::result_from_ptr_mut(smbc_init_context(ctx))?;
+            trace!("context initialized");
+            AUTH_SERVICE
+                .lock()
+                .unwrap()
+                .insert(Self::auth_service_uuid(smbc.ctx), credentials);
         }
         Ok(smbc)
     }
 
     /// Get netbios name from server
     pub fn get_netbios_name(&self) -> SmbResult<String> {
+        trace!("getting netbios name");
         unsafe {
             let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(self.ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
@@ -60,6 +63,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("setting netbios name to {}", name.as_ref());
         let name = utils::str_to_cstring(name)?;
         unsafe { smbc_setNetbiosName(self.ctx, name.into_raw()) }
         Ok(())
@@ -67,6 +71,7 @@ impl SmbClient {
 
     /// Get workgroup name from server
     pub fn get_workgroup(&self) -> SmbResult<String> {
+        trace!("getting workgroup");
         unsafe {
             let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(self.ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
@@ -78,6 +83,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("configuring workgroup to {}", name.as_ref());
         let name = utils::str_to_cstring(name)?;
         unsafe { smbc_setWorkgroup(self.ctx, name.into_raw()) }
         Ok(())
@@ -85,6 +91,7 @@ impl SmbClient {
 
     /// Get get_user name from server
     pub fn get_user(&self) -> SmbResult<String> {
+        trace!("getting current username");
         unsafe {
             let ptr = utils::result_from_ptr_mut(smbc_getUser(self.ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
@@ -96,6 +103,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("configuring current username as {}", name.as_ref());
         let name = utils::str_to_cstring(name)?;
         unsafe { smbc_setUser(self.ctx, name.into_raw()) }
         Ok(())
@@ -103,17 +111,20 @@ impl SmbClient {
 
     /// Get timeout from server
     pub fn get_timeout(&self) -> SmbResult<usize> {
+        trace!("getting timeout");
         unsafe { Ok(smbc_getTimeout(self.ctx) as usize) }
     }
 
     /// Set timeout to server
     pub fn set_timeout(&self, timeout: usize) -> SmbResult<()> {
+        trace!("setting timeout to {}", timeout);
         unsafe { smbc_setTimeout(self.ctx, timeout as c_int) }
         Ok(())
     }
 
     /// Get smbc version
     pub fn get_version(&self) -> SmbResult<String> {
+        trace!("getting smb version");
         unsafe {
             let ptr = smbc_version();
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
@@ -125,6 +136,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("unlinking entry at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
         unsafe { utils::to_result_with_ioerror((), smbc_unlink(path.as_ptr())) }
     }
@@ -134,6 +146,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("renaming {} to {}", orig_url.as_ref(), new_url.as_ref());
         let orig_url = utils::str_to_cstring(self.uri(orig_url))?;
         let new_url = utils::str_to_cstring(self.uri(new_url))?;
         unsafe {
@@ -146,6 +159,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("listing files at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
         unsafe {
             let fd = smbc_opendir(path.as_ptr());
@@ -154,6 +168,7 @@ impl SmbClient {
                 return Err(SmbError::BadFileDescriptor);
             }
             // seek directory
+            trace!("seeking file to end");
             if smbc_lseekdir(fd, libc::SEEK_END.into()) < 0 {
                 let _ = smbc_closedir(fd);
                 error!(
@@ -163,7 +178,9 @@ impl SmbClient {
                 return Err(utils::last_os_error());
             }
             // tell directory
+            trace!("getting directory size");
             let dir_size = smbc_telldir(fd);
+            trace!("got directory size: {}", dir_size);
             if dir_size < 0 {
                 let _ = smbc_closedir(fd);
                 error!(
@@ -176,6 +193,7 @@ impl SmbClient {
             let dir_size = dir_size as usize / mem::size_of::<smbc_dirent>();
             trace!("dir_size buffer is {}", dir_size);
             // rewind
+            trace!("seeking file to beginning");
             if smbc_lseekdir(fd, libc::SEEK_SET.into()) < 0 {
                 let _ = smbc_closedir(fd);
                 error!(
@@ -185,8 +203,10 @@ impl SmbClient {
                 return Err(utils::last_os_error());
             }
             // Allocate directory buffer
+            trace!("allocating dirent buffer with size {}", dir_size);
             let mut buffer: Vec<smbc_dirent> = Vec::with_capacity(dir_size);
             // Get dirents
+            trace!("getting dirents...");
             let count = smbc_getdents(fd as c_uint, buffer.as_mut_ptr(), i32::MAX);
             if count < 0 {
                 let _ = smbc_closedir(fd);
@@ -197,7 +217,9 @@ impl SmbClient {
                 return Err(utils::last_os_error());
             }
             trace!("found {} entries", count);
-            let directories = buffer.into_iter().flat_map(SmbDirent::try_from).collect();
+            let directories: Vec<SmbDirent> =
+                buffer.into_iter().flat_map(SmbDirent::try_from).collect();
+            trace!("decoded {} dirents", directories.len());
             // Close directory
             let _ = smbc_closedir(fd);
             Ok(directories)
@@ -209,8 +231,10 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("making directory at {} with mode {:?}", p.as_ref(), mode);
         let p = utils::str_to_cstring(self.uri(p))?;
-        unsafe { utils::to_result_with_ioerror((), smbc_mkdir(p.as_ptr(), mode.into())) }
+        let mkdir_fn = self.get_fn(smbc_getFunctionMkdir)?;
+        utils::to_result_with_ioerror((), mkdir_fn(self.ctx, p.as_ptr(), mode.into()))
     }
 
     /// Remove directory at `p`
@@ -218,6 +242,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
+        trace!("removing directory at {}", p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         unsafe { utils::to_result_with_ioerror((), smbc_rmdir(p.as_ptr())) }
     }
@@ -266,7 +291,7 @@ impl SmbClient {
     // -- internal private
 
     /// Build connection uri
-    fn build_uri(SmbCredentials { server, share, .. }: &SmbCredentials) -> String {
+    fn build_uri(server: &str, share: &str) -> String {
         format!(
             "{}{}{}",
             server,
@@ -286,7 +311,7 @@ impl SmbClient {
         format!("{}{}", self.uri, p.as_ref())
     }
 
-    /// Callback to get file descriptor
+    /// Callback getter
     pub(crate) fn get_fn<T>(
         &self,
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
@@ -323,24 +348,23 @@ impl SmbClient {
         pw: *mut c_char,
         pwlen: c_int,
     ) {
-        type F = dyn Fn(&str, &str) -> (String, String, String);
         unsafe {
             let srv = utils::cstr(srv);
             let shr = utils::cstr(shr);
             trace!("authenticating on {}\\{}", &srv, &shr);
-
-            let auth: &F = &*(smbc_getOptionUserData(ctx) as *const c_void as *const &F);
-            let auth = panic::AssertUnwindSafe(auth);
-            let (workgroup, username, password) = panic::catch_unwind(|| {
-                trace!("auth with {:?}\\{:?}", srv, shr);
-                auth(&srv, &shr)
-            })
-            .unwrap();
-            trace!("cred: {}\\{} {}", &workgroup, &username, &password);
-            utils::write_to_cstr(wg as *mut u8, wglen as usize, &workgroup);
-            utils::write_to_cstr(un as *mut u8, unlen as usize, &username);
-            utils::write_to_cstr(pw as *mut u8, pwlen as usize, &password);
+            let creds = AUTH_SERVICE
+                .lock()
+                .unwrap()
+                .get(Self::auth_service_uuid(ctx))
+                .clone();
+            utils::write_to_cstr(wg as *mut u8, wglen as usize, &creds.workgroup);
+            utils::write_to_cstr(un as *mut u8, unlen as usize, &creds.username);
+            utils::write_to_cstr(pw as *mut u8, pwlen as usize, &creds.password);
         }
+    }
+
+    fn auth_service_uuid(ctx: *mut SMBCCTX) -> String {
+        format!("{:?}", ctx)
     }
 }
 
@@ -373,8 +397,13 @@ impl<'a> SmbClient {
 // -- destructor
 impl Drop for SmbClient {
     fn drop(&mut self) {
-        trace!("closing smbclient");
+        trace!("removing uri from auth service");
         unsafe {
+            AUTH_SERVICE
+                .lock()
+                .unwrap()
+                .remove(Self::auth_service_uuid(self.ctx));
+            trace!("closing smbclient");
             smbc_free_context(self.ctx, 1_i32);
         }
         trace!("smbclient context freed");
@@ -397,7 +426,7 @@ mod test {
     fn should_initialize_client() {
         mock::logger();
         let client = init_client();
-        assert_eq!(client.uri.as_str(), "smb://localhost/temp");
+        assert_eq!(client.uri.as_str(), "smb://localhost:3139/temp");
         assert_eq!(client.ctx.is_null(), false);
         finalize_client(client);
     }
@@ -406,7 +435,9 @@ mod test {
     #[serial]
     fn should_get_netbios() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.get_netbios_name().is_ok());
+        finalize_client(client);
     }
 
     #[test]

@@ -19,6 +19,8 @@
 #![doc(html_logo_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/pavao.png")]
 
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate log;
 
 // -- mod
