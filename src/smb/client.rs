@@ -295,9 +295,9 @@ impl SmbClient {
         format!(
             "{}{}{}",
             server,
-            match share.starts_with('/') {
+            match share.starts_with('\\') {
                 true => "",
-                false => "/",
+                false => "\\",
             },
             share
         )
@@ -426,7 +426,7 @@ mod test {
     fn should_initialize_client() {
         mock::logger();
         let client = init_client();
-        assert_eq!(client.uri.as_str(), "smb://localhost/temp");
+        assert_eq!(client.uri.as_str(), "smb://localhost:3445\\temp");
         assert_eq!(client.ctx.is_null(), false);
         finalize_client(client);
     }
@@ -576,8 +576,8 @@ mod test {
     fn init_client() -> SmbClient {
         let client = SmbClient::new(
             SmbCredentials::default()
-                .server("localhost")
-                .share("/temp")
+                .server("smb://localhost:3445")
+                .share("\\temp")
                 .username("test")
                 .password("test")
                 .workgroup("pavao"),
@@ -587,7 +587,8 @@ mod test {
         )
         .unwrap();
         // make test dir
-        assert!(client.mkdir("/test", SmbMode::from(0o644)).is_ok());
+        panic!("{:?}", client.mkdir("\\test", SmbMode::from(0o775)));
+        assert!(client.mkdir("\\test", SmbMode::from(0o775)).is_ok());
         client
     }
 
