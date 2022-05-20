@@ -6,7 +6,7 @@ use super::{AuthService, SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOp
 use crate::{utils, SmbDirent};
 use crate::{SmbError, SmbResult};
 
-use libc::{self, c_char, c_int, c_uint};
+use libc::{self, c_char, c_int};
 use smbclient_sys::{SMBCCTX as SmbContext, *};
 use std::mem;
 use std::ptr;
@@ -138,7 +138,8 @@ impl SmbClient {
     {
         trace!("unlinking entry at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        unsafe { utils::to_result_with_ioerror((), smbc_unlink(path.as_ptr())) }
+        let unlink_fn = self.get_fn(smbc_getFunctionUnlink)?;
+        utils::to_result_with_ioerror((), unlink_fn(self.ctx, path.as_ptr()))
     }
 
     /// Rename file at `orig_url` to `new_url`
@@ -149,9 +150,11 @@ impl SmbClient {
         trace!("renaming {} to {}", orig_url.as_ref(), new_url.as_ref());
         let orig_url = utils::str_to_cstring(self.uri(orig_url))?;
         let new_url = utils::str_to_cstring(self.uri(new_url))?;
-        unsafe {
-            utils::to_result_with_ioerror((), smbc_rename(orig_url.as_ptr(), new_url.as_ptr()))
-        }
+        let rename_fn = self.get_fn(smbc_getFunctionRename)?;
+        utils::to_result_with_ioerror(
+            (),
+            rename_fn(self.ctx, orig_url.as_ptr(), self.ctx, new_url.as_ptr()),
+        )
     }
 
     /// List content of directory at `path`
@@ -161,69 +164,43 @@ impl SmbClient {
     {
         trace!("listing files at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        unsafe {
-            let fd = smbc_opendir(path.as_ptr());
-            if fd < 0 {
-                error!("failed to open directory: returned a bad file descriptor");
-                return Err(SmbError::BadFileDescriptor);
-            }
-            // seek directory
-            trace!("seeking file to end");
-            if smbc_lseekdir(fd, libc::SEEK_END.into()) < 0 {
-                let _ = smbc_closedir(fd);
-                error!(
-                    "could not seek directory to the end: {}",
-                    utils::last_os_error()
-                );
-                return Err(utils::last_os_error());
-            }
-            // tell directory
-            trace!("getting directory size");
-            let dir_size = smbc_telldir(fd);
-            trace!("got directory size: {}", dir_size);
-            if dir_size < 0 {
-                let _ = smbc_closedir(fd);
-                error!(
-                    "could not get directory structure size: {}",
-                    utils::last_os_error()
-                );
-                return Err(utils::last_os_error());
-            }
-            // Calculate directory size
-            let dir_size = dir_size as usize / mem::size_of::<smbc_dirent>();
-            trace!("dir_size buffer is {}", dir_size);
-            // rewind
-            trace!("seeking file to beginning");
-            if smbc_lseekdir(fd, libc::SEEK_SET.into()) < 0 {
-                let _ = smbc_closedir(fd);
-                error!(
-                    "could not rewind directory structure: {}",
-                    utils::last_os_error()
-                );
-                return Err(utils::last_os_error());
-            }
-            // Allocate directory buffer
-            trace!("allocating dirent buffer with size {}", dir_size);
-            let mut buffer: Vec<smbc_dirent> = Vec::with_capacity(dir_size);
-            // Get dirents
-            trace!("getting dirents...");
-            let count = smbc_getdents(fd as c_uint, buffer.as_mut_ptr(), i32::MAX);
-            if count < 0 {
-                let _ = smbc_closedir(fd);
-                error!(
-                    "could not get directory entries: {}",
-                    utils::last_os_error()
-                );
-                return Err(utils::last_os_error());
-            }
-            trace!("found {} entries", count);
-            let directories: Vec<SmbDirent> =
-                buffer.into_iter().flat_map(SmbDirent::try_from).collect();
-            trace!("decoded {} dirents", directories.len());
-            // Close directory
-            let _ = smbc_closedir(fd);
-            Ok(directories)
+        let opendir_fn = self.get_fn(smbc_getFunctionOpendir)?;
+        let fd = opendir_fn(self.ctx, path.as_ptr());
+        if fd.is_null() {
+            error!("failed to open directory: returned a bad file descriptor");
+            return Err(SmbError::BadFileDescriptor);
         }
+        let closedir_fn = self.get_fn(smbc_getFunctionClosedir)?;
+        let mut entries = Vec::new();
+        let readdir_fn = self.get_fn(smbc_getFunctionReaddir)?;
+        loop {
+            let dirent = readdir_fn(self.ctx, fd);
+            if dirent.is_null() {
+                break;
+            }
+            unsafe {
+                match SmbDirent::try_from(*dirent) {
+                    Ok(dirent)
+                        if dirent.name() != "."
+                            && dirent.name() != ".."
+                            && !dirent.name().is_empty() =>
+                    {
+                        trace!("found dirent: {:?}", dirent);
+                        entries.push(dirent);
+                    }
+                    Ok(_) => {
+                        trace!("ignoring '..', '.' directories");
+                    }
+                    Err(e) => {
+                        error!("failed to decode directory entity {:?}: {}", dirent, e);
+                    }
+                }
+            }
+        }
+        trace!("decoded {} dirents", entries.len());
+        // Close directory
+        let _ = closedir_fn(self.ctx, fd);
+        Ok(entries)
     }
 
     /// Make directory at `p` with provided `mode`
@@ -244,7 +221,8 @@ impl SmbClient {
     {
         trace!("removing directory at {}", p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
-        unsafe { utils::to_result_with_ioerror((), smbc_rmdir(p.as_ptr())) }
+        let rmdir_fn = self.get_fn(smbc_getFunctionRmdir)?;
+        utils::to_result_with_ioerror((), rmdir_fn(self.ctx, p.as_ptr()))
     }
 
     /// Stat file at `p` and return its metadata
@@ -256,7 +234,8 @@ impl SmbClient {
         let p = utils::str_to_cstring(self.uri(p))?;
         unsafe {
             let mut st: libc::stat = mem::zeroed();
-            if smbc_stat(p.as_ptr(), &mut st) < 0 {
+            let stat_fn = self.get_fn(smbc_getFunctionStat)?;
+            if stat_fn(self.ctx, p.as_ptr(), &mut st) < 0 {
                 error!("failed to stat file: {}", utils::last_os_error());
                 Err(utils::last_os_error())
             } else {
@@ -272,7 +251,8 @@ impl SmbClient {
     {
         trace!("changing mode for {} with {:?}", p.as_ref(), mode);
         let p = utils::str_to_cstring(self.uri(p))?;
-        unsafe { utils::to_result_with_ioerror((), smbc_chmod(p.as_ptr(), mode.into())) }
+        let chmod_fn = self.get_fn(smbc_getFunctionChmod)?;
+        utils::to_result_with_ioerror((), chmod_fn(self.ctx, p.as_ptr(), mode.into()))
     }
 
     /// Print file at `p` using the `print_queue`
@@ -283,9 +263,11 @@ impl SmbClient {
         trace!("printing {} to {} queue", p.as_ref(), print_queue.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         let print_queue = utils::str_to_cstring(self.uri(print_queue))?;
-        unsafe {
-            utils::to_result_with_ioerror((), smbc_print_file(p.as_ptr(), print_queue.as_ptr()))
-        }
+        let print_fn = self.get_fn(smbc_getFunctionPrintFile)?;
+        utils::to_result_with_ioerror(
+            (),
+            print_fn(self.ctx, p.as_ptr(), self.ctx, print_queue.as_ptr()),
+        )
     }
 
     // -- internal private
@@ -295,9 +277,9 @@ impl SmbClient {
         format!(
             "{}{}{}",
             server,
-            match share.starts_with('\\') {
+            match share.starts_with('/') {
                 true => "",
-                false => "\\",
+                false => "/",
             },
             share
         )
@@ -334,6 +316,10 @@ impl SmbClient {
         smbc_setOptionUrlEncodeReaddirEntries(ctx, options.url_encode_readdir_entries as i32);
         smbc_setOptionUseCCache(ctx, options.use_ccache as i32);
         smbc_setOptionUseKerberos(ctx, options.use_kerberos as i32);
+        #[cfg(test)]
+        smbc_setOptionDebugToStderr(ctx, 1 as i32);
+        #[cfg(test)]
+        smbc_setDebug(ctx, 10);
     }
 
     /// Auth wrapper passed to `SMBCCTX` to authenticate requests to SMB servers.
@@ -348,6 +334,7 @@ impl SmbClient {
         pw: *mut c_char,
         pwlen: c_int,
     ) {
+        println!("SERVER {:?}", srv);
         unsafe {
             let srv = utils::cstr(srv);
             let shr = utils::cstr(shr);
@@ -419,6 +406,7 @@ mod test {
     use pretty_assertions::assert_eq;
     use serial_test::serial;
     use std::io::Cursor;
+    use std::path::Path;
     use std::time::SystemTime;
 
     #[test]
@@ -426,7 +414,7 @@ mod test {
     fn should_initialize_client() {
         mock::logger();
         let client = init_client();
-        assert_eq!(client.uri.as_str(), "smb://localhost:3445\\temp");
+        assert_eq!(client.uri.as_str(), "smb://localhost:3445/temp");
         assert_eq!(client.ctx.is_null(), false);
         finalize_client(client);
     }
@@ -574,10 +562,11 @@ mod test {
     }
 
     fn init_client() -> SmbClient {
+        let _ = std::fs::remove_dir_all(Path::new("/tmp/cargo-test"));
         let client = SmbClient::new(
             SmbCredentials::default()
                 .server("smb://localhost:3445")
-                .share("\\temp")
+                .share("/temp")
                 .username("test")
                 .password("test")
                 .workgroup("pavao"),
@@ -587,13 +576,12 @@ mod test {
         )
         .unwrap();
         // make test dir
-        panic!("{:?}", client.mkdir("\\test", SmbMode::from(0o775)));
-        assert!(client.mkdir("\\test", SmbMode::from(0o775)).is_ok());
+        assert!(client.mkdir("/cargo-test", SmbMode::from(0o775)).is_ok());
         client
     }
 
     fn finalize_client(client: SmbClient) {
-        remove_dir_all(&client, "/test");
+        remove_dir_all(&client, "/cargo-test");
         drop(client);
     }
 
@@ -604,6 +592,7 @@ mod test {
                 remove_dir_all(client, d.name());
             }
         }
-        assert!(client.rmdir(dir).is_ok());
+        let _ = client.rmdir(dir); // NOTE: not supported?
+        assert!(std::fs::remove_dir_all(Path::new("/tmp/cargo-test")).is_ok());
     }
 }

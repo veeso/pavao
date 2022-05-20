@@ -32,8 +32,6 @@ mod test {
 
     use super::*;
 
-    use pretty_assertions::assert_eq;
-
     #[test]
     fn should_use_auth_service() {
         let mut auth_service = AuthService::default();
