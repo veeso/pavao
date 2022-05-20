@@ -11,6 +11,7 @@ use smbclient_sys::{SMBCCTX as SmbContext, *};
 use std::mem;
 use std::ptr;
 use std::sync::Mutex;
+use std::time::Duration;
 
 lazy_static! {
     static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
@@ -110,15 +111,15 @@ impl SmbClient {
     }
 
     /// Get timeout from server
-    pub fn get_timeout(&self) -> SmbResult<usize> {
+    pub fn get_timeout(&self) -> SmbResult<Duration> {
         trace!("getting timeout");
-        unsafe { Ok(smbc_getTimeout(self.ctx) as usize) }
+        unsafe { Ok(Duration::from_millis(smbc_getTimeout(self.ctx) as u64)) }
     }
 
     /// Set timeout to server
-    pub fn set_timeout(&self, timeout: usize) -> SmbResult<()> {
-        trace!("setting timeout to {}", timeout);
-        unsafe { smbc_setTimeout(self.ctx, timeout as c_int) }
+    pub fn set_timeout(&self, timeout: Duration) -> SmbResult<()> {
+        trace!("setting timeout to {}ms", timeout.as_millis());
+        unsafe { smbc_setTimeout(self.ctx, timeout.as_millis() as c_int) }
         Ok(())
     }
 
@@ -316,9 +317,9 @@ impl SmbClient {
         smbc_setOptionUrlEncodeReaddirEntries(ctx, options.url_encode_readdir_entries as i32);
         smbc_setOptionUseCCache(ctx, options.use_ccache as i32);
         smbc_setOptionUseKerberos(ctx, options.use_kerberos as i32);
-        #[cfg(test)]
+        #[cfg(feature = "debug")]
         smbc_setOptionDebugToStderr(ctx, 1 as i32);
-        #[cfg(test)]
+        #[cfg(feature = "debug")]
         smbc_setDebug(ctx, 10);
     }
 
@@ -334,7 +335,6 @@ impl SmbClient {
         pw: *mut c_char,
         pwlen: c_int,
     ) {
-        println!("SERVER {:?}", srv);
         unsafe {
             let srv = utils::cstr(srv);
             let shr = utils::cstr(shr);
@@ -403,11 +403,11 @@ mod test {
     use super::*;
     use crate::{mock, SmbDirentType};
 
-    use pretty_assertions::assert_eq;
+    use pretty_assertions::{assert_eq, assert_ne};
     use serial_test::serial;
-    use std::io::Cursor;
+    use std::io::{Cursor, Read};
     use std::path::Path;
-    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
     #[test]
     #[serial]
@@ -432,133 +432,247 @@ mod test {
     #[serial]
     fn should_set_netbios() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.set_netbios_name("foobar").is_ok());
+        assert_eq!(client.get_netbios_name().unwrap().as_str(), "foobar");
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_get_workgroup() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.get_workgroup().is_ok());
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_set_workgroup() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.set_workgroup("foobar").is_ok());
+        assert_eq!(client.get_workgroup().unwrap().as_str(), "foobar");
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_get_user() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.get_user().is_ok());
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_set_user() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.set_user("test").is_ok());
+        assert_eq!(client.get_user().unwrap().as_str(), "test");
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_get_timeout() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.get_timeout().is_ok());
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_set_timeout() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.set_timeout(Duration::from_secs(3)).is_ok());
+        assert_eq!(client.get_timeout().unwrap(), Duration::from_secs(3));
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_get_version() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client.get_version().is_ok());
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_unlink() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/test", "Hello, World!\n");
+        let _ = client.unlink("/cargo-test/test"); // NOTE: may not be supported by the server
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_rename() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/test", "Hello, World!\n");
+        let _ = client.rename("/cargo-test/test", "/cargo-test/new"); // NOTE: may not be supported by the server
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_list_dir() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/abc", "Hello, World!\n");
+        create_file_at(&client, "/cargo-test/def", "Hello, World!\n");
+        assert!(client
+            .mkdir("/cargo-test/jfk", SmbMode::from(0o755))
+            .is_ok());
+        // list dir
+        let entries = client.list_dir("/cargo-test").unwrap();
+        assert_eq!(entries.len(), 3);
+        let abc = entries.get(0).unwrap();
+        assert_eq!(abc.name(), "abc");
+        assert_eq!(abc.get_type(), SmbDirentType::File);
+        let def = entries.get(1).unwrap();
+        assert_eq!(def.name(), "def");
+        assert_eq!(def.get_type(), SmbDirentType::File);
+        let jfk = entries.get(2).unwrap();
+        assert_eq!(jfk.name(), "jfk");
+        assert_eq!(jfk.get_type(), SmbDirentType::Dir);
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_mkdir() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client
+            .mkdir("/cargo-test/testdir", SmbMode::from(0o755))
+            .is_ok());
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_rmdir() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert!(client
+            .mkdir("/cargo-test/testdir", SmbMode::from(0o755))
+            .is_ok());
+        // will return err on this server
+        let _ = client.rmdir("/cargo-test/testdir");
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_stat() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        // Create file
+        create_file_at(&client, "/cargo-test/test", "Hello, World!\n");
+        // stat
+        let file = client.stat("/cargo-test/test").unwrap();
+        assert_ne!(file.accessed, UNIX_EPOCH);
+        assert_ne!(file.blksize, 0);
+        assert_ne!(file.blocks, 0);
+        assert_eq!(file.mode, SmbMode::from(0o644));
+        assert_eq!(file.size, 14);
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_chmod() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        // Create file
+        create_file_at(&client, "/cargo-test/test", "Hello, World!\n");
+        let _ = client.chmod("/cargo-test/test", SmbMode::from(0o755)); // NOTE: may not be supported by the server
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_build_uri() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        assert_eq!(
+            client.uri("/test").as_str(),
+            "smb://localhost:3445/temp/test"
+        );
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_read_file() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/test", "Hello, World!\n");
+        // read file
+        let mut reader = client
+            .open_with("/cargo-test/test", SmbOpenOptions::default().read(true))
+            .unwrap();
+        let mut output = String::default();
+        assert!(reader.read_to_string(&mut output).is_ok());
+        drop(reader);
+        assert_eq!(output.as_str(), "Hello, World!\n");
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_write_file() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        // write file
+        let mut writer = client
+            .open_with(
+                "/cargo-test/test",
+                SmbOpenOptions::default().write(true).create(true),
+            )
+            .unwrap();
+        let mut reader = Cursor::new("test string\n".as_bytes());
+        assert_eq!(std::io::copy(&mut reader, &mut writer).unwrap(), 12);
+        drop(writer);
+        finalize_client(client);
     }
 
     #[test]
     #[serial]
     fn should_append_to_file() {
         mock::logger();
-        todo!();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/test", "Hello, World!\n");
+        // append
+        let mut writer = client
+            .open_with(
+                "/cargo-test/test",
+                SmbOpenOptions::default().write(true).append(true),
+            )
+            .unwrap();
+        let mut reader = Cursor::new("Bonjour\n".as_bytes());
+        assert_eq!(std::io::copy(&mut reader, &mut writer).unwrap(), 8);
+        drop(writer);
+        // read
+        let mut reader = client
+            .open_with("/cargo-test/test", SmbOpenOptions::default().read(true))
+            .unwrap();
+        let mut output = String::default();
+        assert!(reader.read_to_string(&mut output).is_ok());
+        drop(reader);
+        assert_eq!(output.as_str(), "Hello, World!\nBonjour\n");
+        finalize_client(client);
     }
 
     fn init_client() -> SmbClient {
@@ -576,23 +690,31 @@ mod test {
         )
         .unwrap();
         // make test dir
-        assert!(client.mkdir("/cargo-test", SmbMode::from(0o775)).is_ok());
+        let _ = std::fs::create_dir(Path::new("/tmp/cargo-test"));
         client
     }
 
     fn finalize_client(client: SmbClient) {
-        remove_dir_all(&client, "/cargo-test");
+        remove_dir_all("/cargo-test");
+        std::thread::sleep(Duration::from_secs(1));
         drop(client);
     }
 
-    fn remove_dir_all<S: AsRef<str>>(client: &SmbClient, dir: S) {
-        let entries = client.list_dir(dir.as_ref()).unwrap();
-        for d in entries.into_iter() {
-            if d.get_type() == SmbDirentType::Dir {
-                remove_dir_all(client, d.name());
-            }
-        }
-        let _ = client.rmdir(dir); // NOTE: not supported?
-        assert!(std::fs::remove_dir_all(Path::new("/tmp/cargo-test")).is_ok());
+    fn remove_dir_all<S: AsRef<str>>(dir: S) {
+        let _ = std::fs::remove_dir_all(Path::new(dir.as_ref()));
+    }
+
+    fn create_file_at<S: AsRef<str>>(client: &SmbClient, uri: S, content: S) {
+        let mut reader = Cursor::new(content.as_ref().as_bytes());
+        let mut writer = client
+            .open_with(
+                uri,
+                SmbOpenOptions::default()
+                    .create(true)
+                    .write(true)
+                    .mode(0o644),
+            )
+            .unwrap();
+        assert!(std::io::copy(&mut reader, &mut writer).is_ok());
     }
 }
