@@ -5,6 +5,13 @@
 </p>
 
 <p align="center">~ A Rust client library for SMB ~</p>
+<p align="center">
+  <a href="#get-started-">Get started</a>
+  ·
+  <a href="https://crates.io/crates/pavao" target="_blank">Crates.io</a>
+  ·
+  <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
+</p>
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
 <p align="center">Current version: 0.1.0 (21/05/2022)</p>
 
@@ -50,6 +57,11 @@
     ><img
       src="https://coveralls.io/repos/github/veeso/pavao/badge.svg"
       alt="Coveralls"
+  /></a>
+   <a href="https://docs.rs/pavao"
+    ><img
+      src="https://docs.rs/pavao/badge.svg"
+      alt="Docs"
   /></a>
 </p>
 
