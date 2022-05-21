@@ -20,6 +20,11 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-targets
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:

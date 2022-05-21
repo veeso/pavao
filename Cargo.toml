@@ -30,3 +30,11 @@ serial_test = "^0.6.0"
 [features]
 debug = []
 with-containers = []
+
+[[example]]
+name = "transfer"
+path = "examples/transfer.rs"
+
+[[example]]
+name = "tree"
+path = "examples/tree.rs"
