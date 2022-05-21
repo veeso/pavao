@@ -535,7 +535,8 @@ mod test {
             .mkdir("/cargo-test/jfk", SmbMode::from(0o755))
             .is_ok());
         // list dir
-        let entries = client.list_dir("/cargo-test").unwrap();
+        let mut entries = client.list_dir("/cargo-test").unwrap();
+        entries.sort_by(|a, b| a.name().cmp(&b.name()));
         assert_eq!(entries.len(), 3);
         let abc = entries.get(0).unwrap();
         assert_eq!(abc.name(), "abc");
@@ -585,7 +586,7 @@ mod test {
         assert_ne!(file.accessed, UNIX_EPOCH);
         assert_ne!(file.blksize, 0);
         assert_ne!(file.blocks, 0);
-        assert_eq!(file.mode, SmbMode::from(0o644));
+        assert_eq!(file.mode, SmbMode::from(0o744));
         assert_eq!(file.size, 14);
         finalize_client(client);
     }
@@ -712,7 +713,7 @@ mod test {
                 SmbOpenOptions::default()
                     .create(true)
                     .write(true)
-                    .mode(0o644),
+                    .mode(0o744),
             )
             .unwrap();
         assert!(std::io::copy(&mut reader, &mut writer).is_ok());
