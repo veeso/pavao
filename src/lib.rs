@@ -11,6 +11,31 @@
 //! pavao = "0.1.0"
 //! ```
 //!
+//! ## Example
+//!
+//!
+//! ```rust
+//! use pavao::{SmbClient, SmbCredentials, SmbOptions};
+//!
+//! let client = SmbClient::new(
+//!     SmbCredentials::default()
+//!         .server("smb://localhost:3445")
+//!         .share("/temp")
+//!         .username("test")
+//!         .password("test")
+//!         .workgroup("pavao"),
+//!     SmbOptions::default()
+//!         .case_sensitive(true)
+//!         .one_share_per_server(true),
+//!     )
+//!     .unwrap();
+//!
+//! // drop connection
+//! drop(client);
+//! ```
+//!
+//! Further examples can be found under the `examples/` directory in the Github repository
+//!
 
 #![doc(html_playground_url = "https://play.rust-lang.org")]
 #![doc(

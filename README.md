@@ -6,7 +6,7 @@
 
 <p align="center">~ A Rust client library for SMB ~</p>
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.1.0 (FIXME:)</p>
+<p align="center">Current version: 0.1.0 (21/05/2022)</p>
 
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
@@ -139,11 +139,44 @@ rm -rf samba/
 
 ### Create a pavao application
 
-TODO:
+```rust
+use pavao::{SmbClient, SmbCredentials, SmbOptions, SmbOpenOptions};
+
+// Initialize a new client
+let client = SmbClient::new(
+    SmbCredentials::default()
+        .server(server)
+        .share(share)
+        .password(password)
+        .username(username)
+        .workgroup(workgroup),
+    SmbOptions::default().one_share_per_server(true),
+)
+.unwrap();
+// do anything you want here with client
+let mut file = client.open_with("/abc/test.txt", SmbOpenOptions::default().read(true)).unwrap();
+// read file...
+drop(file);
+// disconnect from server
+drop(client);
+
+```
 
 ### Run examples
 
-TODO:
+Two examples are provided along with this repository and can be found under the `examples/` directory.
+
+The `tree` example can be used to get a fs tree of the smb share and can be run with:
+
+```sh
+cargo run --example tree -- -u <username> -w <workspace> -s <share> -P <password> smb://<hostname>
+```
+
+while the `transfer` example shows how to write a file to the remote host and can be run with:
+
+```sh
+cargo run --example transfer -- -i <file_on_local> -o <file_to_write> -u <username> -w <workspace> -s <share> -P <password> smb://<hostname>
+```
 
 ---
 
