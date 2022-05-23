@@ -6,8 +6,8 @@ use super::{AuthService, SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOp
 use crate::{utils, SmbDirent};
 use crate::{SmbError, SmbResult};
 
+use crate::libsmbclient::{SMBCCTX as SmbContext, *};
 use libc::{self, c_char, c_int};
-use smbclient_sys::{SMBCCTX as SmbContext, *};
 use std::mem;
 use std::ptr;
 use std::sync::Mutex;

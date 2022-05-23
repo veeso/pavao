@@ -5,8 +5,8 @@
 use crate::utils::char_ptr_to_string;
 use crate::SmbError;
 
+use crate::libsmbclient::smbc_dirent;
 use libc::c_uint;
-use smbclient_sys::smbc_dirent;
 
 /// Smb directory entity
 #[derive(Debug, Clone)]
@@ -156,11 +156,16 @@ mod test {
         dirent.smbc_type = 8;
         dirent.comment = comment_ptr.into_raw();
         dirent.commentlen = 5;
-        dirent.name = ['c' as i8];
+        dirent.name = [0; 1024];
         dirent.namelen = 1;
+        dirent.name[0] = 'h' as i8;
+        dirent.name[1] = 'e' as i8;
+        dirent.name[2] = 'l' as i8;
+        dirent.name[3] = 'l' as i8;
+        dirent.name[4] = 'o' as i8;
         let dirent = SmbDirent::try_from(dirent).unwrap();
         assert_eq!(dirent.get_type(), SmbDirentType::File);
-        assert_eq!(dirent.name(), "c");
+        assert_eq!(dirent.name(), "hello");
         assert_eq!(dirent.comment(), "test");
     }
 

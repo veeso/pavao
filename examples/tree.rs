@@ -40,7 +40,7 @@ fn main() {
         SmbOptions::default().one_share_per_server(true),
     )
     .unwrap();
-    tree(&client, "/pavao", 0);
+    tree(&client, "/", 0);
 }
 
 /// Read a secret from tty with customisable prompt
@@ -83,5 +83,5 @@ fn print_entry(entity: &SmbDirent, stat: &SmbStat, depth: usize) {
 }
 
 fn fmt_depth(depth: usize) -> String {
-    " ".repeat(depth * 2)
+    " ".repeat(depth * 4)
 }

@@ -50,6 +50,7 @@ extern crate log;
 
 // -- mod
 mod error;
+mod libsmbclient;
 mod smb;
 pub(crate) mod utils;
 

@@ -2,7 +2,7 @@
 //!
 //! module which exposes the smb client options
 
-use smbclient_sys::{smbc_share_mode, smbc_smb_encrypt_level};
+use crate::libsmbclient::{smbc_share_mode, smbc_smb_encrypt_level};
 
 /// Smb connection options
 #[derive(Debug, Clone)]
