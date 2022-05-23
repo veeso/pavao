@@ -7,4 +7,5 @@ ignore:
     - "C:/*"
     - "../*"
     - src/lib.rs
+    - src/libsmbclient.rs
     - "src/mock/*"
