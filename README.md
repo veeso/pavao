@@ -99,7 +99,7 @@ Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which
 ### Add pavao to your Cargo.toml 🦀
 
 ```toml
-pavao = "0.1.1"
+pavao = "0.1.2"
 ```
 
 ### Install pavao C dependencies on your system 🖥️
