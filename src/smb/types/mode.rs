@@ -93,27 +93,20 @@ enum SmbFileType {
     RegularFile,
     Socket,
     Symlink,
+    Unknown,
 }
 
 impl From<mode_t> for SmbFileType {
     fn from(mode: mode_t) -> Self {
-        let type_ = mode & S_IFMT;
-        if type_ == S_IFSOCK {
-            Self::Socket
-        } else if type_ == S_IFLNK {
-            Self::Symlink
-        } else if type_ == S_IFREG {
-            Self::RegularFile
-        } else if type_  == S_IFBLK {
-            Self::Block
-        } else if type_ == S_IFDIR {
-            Self::Directory
-        } else if type_ == S_IFCHR {
-            Self::Character
-        } else if type_ == S_IFIFO {
-            Self::Pipe
-        } else {
-            Self::RegularFile
+        match mode & S_IFMT {
+            S_IFSOCK => Self::Socket,
+            S_IFLNK => Self::Symlink,
+            S_IFREG => Self::RegularFile,
+            S_IFBLK => Self::Block,
+            S_IFDIR => Self::Directory,
+            S_IFCHR => Self::Character,
+            S_IFIFO => Self::Pipe,
+            _ => Self::Unknown,
         }
     }
 }
