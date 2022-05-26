@@ -78,7 +78,7 @@ fn print_entry(entity: &SmbDirent, stat: &SmbStat, depth: usize) {
         entity.name(),
         stat.uid,
         stat.gid,
-        stat.size
+        stat.size,
     );
 }
 

@@ -2,47 +2,119 @@
 //!
 //! provides types for POSIX file mode
 
-use libc::mode_t;
+use libc::{mode_t, S_IFDIR, S_IFSOCK, S_IFLNK, S_IFREG, S_IFBLK, S_IFCHR, S_IFIFO, S_IFMT};
 
 /// Describes the permissions on POSIX system.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct SmbMode(SmbModeClass, SmbModeClass, SmbModeClass);
+pub struct SmbMode {
+    type_: SmbFileType,
+    mode: (SmbModeClass, SmbModeClass, SmbModeClass),
+}
 
 impl SmbMode {
-    /// Create a new `SmbMode`
-    pub fn new(user: SmbModeClass, group: SmbModeClass, others: SmbModeClass) -> Self {
-        Self(user, group, others)
+
+    /// Returns the mode represents a regular file
+    pub fn is_file(&self) -> bool {
+        self.type_ == SmbFileType::RegularFile
+    }
+
+    /// Returns the mode represents a directory
+    pub fn is_dir(&self) -> bool {
+        self.type_ == SmbFileType::Directory
+    }
+
+    /// Returns the mode represents a block
+    pub fn is_block(&self) -> bool {
+        self.type_ == SmbFileType::Block
+    }
+
+    /// Returns the mode represents a character
+    pub fn is_character(&self) -> bool {
+        self.type_ == SmbFileType::Character
+    }
+    
+    /// Returns the mode represents a pipe
+    pub fn is_pipe(&self) -> bool {
+        self.type_ == SmbFileType::Pipe
+    }
+
+    /// Returns the mode represents a socket
+    pub fn is_socket(&self) -> bool {
+        self.type_ == SmbFileType::Socket
+    }
+
+    /// Returns the mode represents a symlink
+    pub fn is_symlink(&self) -> bool {
+        self.type_ == SmbFileType::Symlink
     }
 
     /// Returns unix permissions class for `user`
     pub fn user(&self) -> SmbModeClass {
-        self.0
+        self.mode.0
     }
 
     /// Returns unix permissions class for `group`
     pub fn group(&self) -> SmbModeClass {
-        self.1
+        self.mode.1
     }
 
     /// Returns unix permissions class for `others`
     pub fn others(&self) -> SmbModeClass {
-        self.2
+        self.mode.2
     }
 }
 
 impl From<SmbMode> for mode_t {
     fn from(pex: SmbMode) -> Self {
-        (mode_t::from(pex.0) << 6) + (mode_t::from(pex.1) << 3) + mode_t::from(pex.2)
+        (mode_t::from(pex.mode.0) << 6) + (mode_t::from(pex.mode.1) << 3) + mode_t::from(pex.mode.2)
     }
 }
 
 impl From<mode_t> for SmbMode {
     fn from(x: mode_t) -> Self {
-        SmbMode::new(
-            SmbModeClass::from(((x >> 6) & 0x7) as mode_t),
+        Self {
+            type_: SmbFileType::from(x),
+            mode: (
+                SmbModeClass::from(((x >> 6) & 0x7) as mode_t),
             SmbModeClass::from(((x >> 3) & 0x7) as mode_t),
-            SmbModeClass::from((x & 0x7) as mode_t),
-        )
+            SmbModeClass::from((x & 0x7) as mode_t)
+            )
+        }
+    }
+}
+
+/// Describes the kind of file
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+enum SmbFileType {
+    Block,
+    Character,
+    Directory,
+    Pipe,
+    RegularFile,
+    Socket,
+    Symlink,
+}
+
+impl From<mode_t> for SmbFileType {
+    fn from(mode: mode_t) -> Self {
+        let type_ = mode & S_IFMT;
+        if type_ == S_IFSOCK {
+            Self::Socket
+        } else if type_ == S_IFLNK {
+            Self::Symlink
+        } else if type_ == S_IFREG {
+            Self::RegularFile
+        } else if type_  == S_IFBLK {
+            Self::Block
+        } else if type_ == S_IFDIR {
+            Self::Directory
+        } else if type_ == S_IFCHR {
+            Self::Character
+        } else if type_ == S_IFIFO {
+            Self::Pipe
+        } else {
+            Self::RegularFile
+        }
     }
 }
 
@@ -134,11 +206,7 @@ mod test {
 
     #[test]
     fn should_create_unix_pex() {
-        let pex = SmbMode::new(
-            SmbModeClass::from(6),
-            SmbModeClass::from(4),
-            SmbModeClass::from(0),
-        );
+        let pex = SmbMode::from(0o640);
         assert_eq!(pex.user().as_byte(), 6);
         assert_eq!(pex.group().as_byte(), 4);
         assert_eq!(pex.others().as_byte(), 0);
@@ -146,29 +214,14 @@ mod test {
 
     #[test]
     fn should_convert_unix_pex_to_byte() {
-        let pex = SmbMode::new(
-            SmbModeClass::from(6),
-            SmbModeClass::from(4),
-            SmbModeClass::from(2),
-        );
+        let pex = SmbMode::from(0o642);
         assert_eq!(mode_t::from(pex), 0o642);
-        let pex = SmbMode::new(
-            SmbModeClass::from(7),
-            SmbModeClass::from(5),
-            SmbModeClass::from(5),
-        );
+        let pex = SmbMode::from(0o755);
         assert_eq!(mode_t::from(pex), 0o755);
     }
 
     #[test]
     fn should_convert_u32_to_unix_pex() {
-        assert_eq!(
-            SmbMode::from(0o754),
-            SmbMode::new(
-                SmbModeClass::from(7),
-                SmbModeClass::from(5),
-                SmbModeClass::from(4),
-            )
-        );
+        let _ = SmbMode::from(0o754);
     }
 }
