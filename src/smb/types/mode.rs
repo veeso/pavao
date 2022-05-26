@@ -2,7 +2,7 @@
 //!
 //! provides types for POSIX file mode
 
-use libc::{mode_t, S_IFDIR, S_IFSOCK, S_IFLNK, S_IFREG, S_IFBLK, S_IFCHR, S_IFIFO, S_IFMT};
+use libc::{mode_t, S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFMT, S_IFREG, S_IFSOCK};
 
 /// Describes the permissions on POSIX system.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -12,7 +12,6 @@ pub struct SmbMode {
 }
 
 impl SmbMode {
-
     /// Returns the mode represents a regular file
     pub fn is_file(&self) -> bool {
         self.type_ == SmbFileType::RegularFile
@@ -32,7 +31,7 @@ impl SmbMode {
     pub fn is_character(&self) -> bool {
         self.type_ == SmbFileType::Character
     }
-    
+
     /// Returns the mode represents a pipe
     pub fn is_pipe(&self) -> bool {
         self.type_ == SmbFileType::Pipe
@@ -76,9 +75,9 @@ impl From<mode_t> for SmbMode {
             type_: SmbFileType::from(x),
             mode: (
                 SmbModeClass::from(((x >> 6) & 0x7) as mode_t),
-            SmbModeClass::from(((x >> 3) & 0x7) as mode_t),
-            SmbModeClass::from((x & 0x7) as mode_t)
-            )
+                SmbModeClass::from(((x >> 3) & 0x7) as mode_t),
+                SmbModeClass::from((x & 0x7) as mode_t),
+            ),
         }
     }
 }
