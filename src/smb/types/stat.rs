@@ -2,10 +2,16 @@
 //!
 //! file stat type
 
+use crate::{libsmbclient::libsmb_file_info, utils::char_ptr_to_string};
+use crate::{SmbDirentType, SmbError};
+
 use super::SmbMode;
 
 use libc::{stat, time_t};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+/// DOS Attribute mask for DIRECTORY
+const FILE_ATTRIBUTE_DIRECTORY: u16 = 0x0010;
 
 /// Smb stat type
 #[derive(Debug, Clone)]
@@ -51,6 +57,74 @@ impl From<stat> for SmbStat {
             size: s.st_size as u64,
             uid: s.st_uid as u32,
         }
+    }
+}
+
+/// SMB directory entity with metadata
+#[derive(Debug, Clone)]
+pub struct SmbDirentInfo {
+    /// Name of file
+    pub name: String,
+    /// Short name of file
+    pub short_name: String,
+    /// Size of file
+    pub size: u64,
+    /// DOS attributes of file
+    pub attrs: u16,
+    /// Change time for the file
+    pub ctime: SystemTime,
+    /// Birth/Create time of file (if not supported, it will be 0)
+    pub btime: SystemTime,
+    /// Modified time for the file
+    pub mtime: SystemTime,
+    /// Access time for the file
+    pub atime: SystemTime,
+    /// Group ID of file
+    pub uid: u32,
+    /// User ID of file
+    pub gid: u32,
+}
+
+impl SmbDirentInfo {
+    /// Get directory entity type
+    pub fn get_type(&self) -> SmbDirentType {
+        if self.attrs & FILE_ATTRIBUTE_DIRECTORY != 0 {
+            SmbDirentType::Dir
+        } else {
+            SmbDirentType::File
+        }
+    }
+
+    /// Get name
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    /// Get short name
+    pub fn short_name(&self) -> &str {
+        self.short_name.as_str()
+    }
+}
+
+impl TryFrom<libsmb_file_info> for SmbDirentInfo {
+    type Error = SmbError;
+
+    fn try_from(di: libsmb_file_info) -> Result<Self, Self::Error> {
+        let name = char_ptr_to_string(di.name)?;
+        let short_name = char_ptr_to_string(di.short_name)?;
+
+        Ok(Self {
+            name,
+            short_name,
+            size: di.size as u64,
+            ctime: time_t_to_system_time(di.ctime_ts.tv_sec),
+            btime: time_t_to_system_time(di.btime_ts.tv_sec),
+            mtime: time_t_to_system_time(di.mtime_ts.tv_sec),
+            atime: time_t_to_system_time(di.atime_ts.tv_sec),
+            uid: di.uid as u32,
+            gid: di.gid as u32,
+            attrs: di.attrs as u16,
+        })
     }
 }
 

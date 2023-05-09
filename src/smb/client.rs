@@ -2,7 +2,10 @@
 //!
 //! module which exposes the Smb Client
 
-use super::{AuthService, SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOptions, SmbStat};
+use super::{
+    AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
+    SmbStat,
+};
 use crate::{utils, SmbDirent};
 use crate::{SmbError, SmbResult};
 
@@ -199,6 +202,55 @@ impl SmbClient {
             }
         }
         trace!("decoded {} dirents", entries.len());
+        // Close directory
+        let _ = closedir_fn(self.ctx, fd);
+        Ok(entries)
+    }
+
+    /// List content of directory with metadata at 'path'
+    pub fn list_dirplus<S>(&self, path: S) -> SmbResult<Vec<SmbDirentInfo>>
+    where
+        S: AsRef<str>,
+    {
+        trace!("listing files with metadata at {}", path.as_ref());
+        let path = utils::str_to_cstring(self.uri(path))?;
+        let opendir_fn = self.get_fn(smbc_getFunctionOpendir)?;
+        let fd = opendir_fn(self.ctx, path.as_ptr());
+        if fd.is_null() {
+            error!("failed to open directory: returned a bad file descriptor");
+            return Err(SmbError::BadFileDescriptor);
+        }
+        let closedir_fn = self.get_fn(smbc_getFunctionClosedir)?;
+        let mut entries = Vec::new();
+        let readdirplus_fn = self.get_fn(smbc_getFunctionReaddirPlus)?;
+        loop {
+            let direntplus = readdirplus_fn(self.ctx, fd);
+            if direntplus.is_null() {
+                break;
+            }
+            unsafe {
+                match SmbDirentInfo::try_from(*direntplus) {
+                    Ok(direntplus)
+                        if direntplus.name() != "."
+                            && direntplus.name() != ".."
+                            && !direntplus.name().is_empty() =>
+                    {
+                        trace!("found direntplus: {:?}", direntplus);
+                        entries.push(direntplus);
+                    }
+                    Ok(_) => {
+                        trace!("ignoring '..', '.' directories");
+                    }
+                    Err(e) => {
+                        error!(
+                            "failed to decode directory entity with metadata {:?}: {}",
+                            direntplus, e
+                        );
+                    }
+                }
+            }
+        }
+        trace!("decoded {} direntpluses", entries.len());
         // Close directory
         let _ = closedir_fn(self.ctx, fd);
         Ok(entries)
@@ -414,7 +466,10 @@ mod test {
     fn should_initialize_client() {
         mock::logger();
         let client = init_client();
-        assert_eq!(client.uri.as_str(), "smb://localhost:3445/temp");
+        assert_eq!(
+            client.uri.as_str(),
+            "smb://192.168.1.216:4445/main storage/temp"
+        );
         assert_eq!(client.ctx.is_null(), false);
         finalize_client(client);
     }
@@ -546,6 +601,32 @@ mod test {
         assert_eq!(def.get_type(), SmbDirentType::File);
         let jfk = entries.get(2).unwrap();
         assert_eq!(jfk.name(), "jfk");
+        assert_eq!(jfk.get_type(), SmbDirentType::Dir);
+        finalize_client(client);
+    }
+
+    #[test]
+    #[serial]
+    fn should_list_dirplus() {
+        mock::logger();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/ghi", "Hello, World!\n");
+        create_file_at(&client, "/cargo-test/jkl", "Hello, World!\n");
+        assert!(client
+            .mkdir("/cargo-test/hil", SmbMode::from(0o755))
+            .is_ok());
+        // list dir
+        let mut entries = client.list_dir("/cargo-test").unwrap();
+        entries.sort_by(|a, b| a.name().cmp(&b.name()));
+        assert_eq!(entries.len(), 3);
+        let abc = entries.get(0).unwrap();
+        assert_eq!(abc.name(), "ghi");
+        assert_eq!(abc.get_type(), SmbDirentType::File);
+        let def = entries.get(1).unwrap();
+        assert_eq!(def.name(), "jkl");
+        assert_eq!(def.get_type(), SmbDirentType::File);
+        let jfk = entries.get(2).unwrap();
+        assert_eq!(jfk.name(), "hil");
         assert_eq!(jfk.get_type(), SmbDirentType::Dir);
         finalize_client(client);
     }

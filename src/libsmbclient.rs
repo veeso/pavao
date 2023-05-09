@@ -3,7 +3,8 @@
 use std::{clone, default, mem, option};
 
 use libc::{
-    c_char, c_int, c_uint, c_ushort, c_void, mode_t, off_t, size_t, ssize_t, stat, time_t, timeval,
+    c_char, c_int, c_uint, c_ulong, c_ushort, c_void, mode_t, off_t, size_t, ssize_t, stat, time_t,
+    timespec, timeval,
 };
 
 #[repr(C)]
@@ -47,6 +48,53 @@ impl clone::Clone for smbc_dirent {
 }
 
 impl default::Default for smbc_dirent {
+    fn default() -> Self {
+        unsafe { mem::zeroed() }
+    }
+}
+#[repr(C)]
+#[derive(Copy)]
+/// Structure that represents all attributes of a directory entry.
+/// libsmb_file_info as implemented in libsmbclient.h
+pub struct libsmb_file_info {
+    /// Size of file
+    pub size: c_ulong,
+    /// DOS attributes of file
+    pub attrs: c_ushort,
+    /// User ID of file
+    pub uid: c_uint,
+    /// Group ID of file
+    pub gid: c_uint,
+    /// Birth/Create time of file (if supported by system)
+    ///Otherwise the value will be 0
+    pub btime_ts: timespec,
+    /// Modified time for the file
+    pub mtime_ts: timespec,
+    /// Access time for the file
+    pub atime_ts: timespec,
+    /// Change time for the file
+    pub ctime_ts: timespec,
+    /// Name of file
+    pub name: *mut c_char,
+    /// Short name of file
+    pub short_name: *mut c_char,
+}
+
+// impl std::fmt::Debug for timespec {
+//     fn fmt(&self, f:&mut Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("timespec")
+//             .field("tv_sec", &self.tv_sec)
+//             .field("tv_nsec", &self.tv_nsec)
+//             .finish()
+//     }
+// }
+impl clone::Clone for libsmb_file_info {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl default::Default for libsmb_file_info {
     fn default() -> Self {
         unsafe { mem::zeroed() }
     }
@@ -213,6 +261,8 @@ pub type smbc_closedir_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, dir: *mut SMBCFILE) -> c_int>;
 pub type smbc_readdir_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, dir: *mut SMBCFILE) -> *mut smbc_dirent>;
+pub type smbc_readdirplus_fn =
+    option::Option<extern "C" fn(c: *mut SMBCCTX, dir: *mut SMBCFILE) -> *mut libsmb_file_info>;
 pub type smbc_getdents_fn = option::Option<
     extern "C" fn(
         c: *mut SMBCCTX,
@@ -419,6 +469,7 @@ extern "C" {
     pub fn smbc_getFunctionOpendir(c: *mut SMBCCTX) -> smbc_opendir_fn;
     pub fn smbc_getFunctionClosedir(c: *mut SMBCCTX) -> smbc_closedir_fn;
     pub fn smbc_getFunctionReaddir(c: *mut SMBCCTX) -> smbc_readdir_fn;
+    pub fn smbc_getFunctionReaddirPlus(c: *mut SMBCCTX) -> smbc_readdirplus_fn;
     pub fn smbc_getFunctionMkdir(c: *mut SMBCCTX) -> smbc_mkdir_fn;
     pub fn smbc_getFunctionRmdir(c: *mut SMBCCTX) -> smbc_rmdir_fn;
     pub fn smbc_getFunctionChmod(c: *mut SMBCCTX) -> smbc_chmod_fn;
