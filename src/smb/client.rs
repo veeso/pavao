@@ -352,7 +352,7 @@ impl SmbClient {
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
     ) -> std::io::Result<T> {
         unsafe {
-            get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL as i32))
+            get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL))
         }
     }
 

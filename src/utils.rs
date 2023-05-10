@@ -77,7 +77,7 @@ pub fn to_result_with_le<T: Eq + From<i8>>(t: T) -> io::Result<T> {
 #[inline(always)]
 /// to io::Result with Err(from_raw_os_error(errno)) if t == -1
 pub fn to_result_with_errno<T: Eq + From<i8>>(t: T, errno: c_int) -> io::Result<T> {
-    to_result_with_error(t, io::Error::from_raw_os_error(errno as i32))
+    to_result_with_error(t, io::Error::from_raw_os_error(errno))
 }
 
 #[inline(always)]

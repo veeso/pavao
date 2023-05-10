@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use env_logger;
+
 use pavao::{SmbClient, SmbCredentials, SmbDirentInfo, SmbDirentType, SmbOptions};
 use std::path::PathBuf;
 
@@ -45,10 +45,7 @@ fn main() {
 
 /// Read a secret from tty with customisable prompt
 fn read_secret_from_tty(prompt: &str) -> std::io::Result<String> {
-    match rpassword::read_password_from_tty(Some(prompt)) {
-        Ok(p) => Ok(p),
-        Err(err) => Err(err),
-    }
+    rpassword::read_password_from_tty(Some(prompt))
 }
 
 fn treeplus(client: &SmbClient, uri: &str, depth: usize) {
@@ -58,7 +55,7 @@ fn treeplus(client: &SmbClient, uri: &str, depth: usize) {
         print_entry_plus(&entityplus, depth);
         // if is dir, iter directory
         if entityplus.get_type() == SmbDirentType::Dir {
-            treeplus(client, &entityplus_uri.as_str(), depth + 1)
+            treeplus(client, entityplus_uri.as_str(), depth + 1)
         }
     }
 }

@@ -45,17 +45,17 @@ impl From<stat> for SmbStat {
     fn from(s: stat) -> Self {
         Self {
             accessed: time_t_to_system_time(s.st_atime),
-            blocks: s.st_blocks as i64,
-            blksize: s.st_blksize as i64,
+            blocks: s.st_blocks,
+            blksize: s.st_blksize,
             created: time_t_to_system_time(s.st_ctime),
             dev: s.st_dev as i32,
-            gid: s.st_gid as u32,
+            gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
             modified: time_t_to_system_time(s.st_mtime),
-            nlink: s.st_nlink as u64,
-            rdev: s.st_rdev as u64,
+            nlink: s.st_nlink,
+            rdev: s.st_rdev,
             size: s.st_size as u64,
-            uid: s.st_uid as u32,
+            uid: s.st_uid,
         }
     }
 }
@@ -116,14 +116,14 @@ impl TryFrom<libsmb_file_info> for SmbDirentInfo {
         Ok(Self {
             name,
             short_name,
-            size: di.size as u64,
+            size: di.size,
             ctime: time_t_to_system_time(di.ctime_ts.tv_sec),
             btime: time_t_to_system_time(di.btime_ts.tv_sec),
             mtime: time_t_to_system_time(di.mtime_ts.tv_sec),
             atime: time_t_to_system_time(di.atime_ts.tv_sec),
-            uid: di.uid as u32,
-            gid: di.gid as u32,
-            attrs: di.attrs as u16,
+            uid: di.uid,
+            gid: di.gid,
+            attrs: di.attrs,
         })
     }
 }

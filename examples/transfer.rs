@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use env_logger;
+
 use pavao::{SmbClient, SmbCredentials, SmbOpenOptions, SmbOptions};
 use std::fs::File;
 use std::io;
@@ -60,8 +60,5 @@ fn main() {
 
 /// Read a secret from tty with customisable prompt
 fn read_secret_from_tty(prompt: &str) -> std::io::Result<String> {
-    match rpassword::read_password_from_tty(Some(prompt)) {
-        Ok(p) => Ok(p),
-        Err(err) => Err(err),
-    }
+    rpassword::read_password_from_tty(Some(prompt))
 }
