@@ -47,13 +47,22 @@ impl From<stat> for SmbStat {
         Self {
             accessed: time_t_to_system_time(s.st_atime),
             blocks: s.st_blocks,
+            #[cfg(target_os = "macos")]
+            blksize: s.st_blksize as i64,
+            #[cfg(not(target_os = "macos"))]
             blksize: s.st_blksize,
             created: time_t_to_system_time(s.st_ctime),
             dev: s.st_dev as i32,
             gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
             modified: time_t_to_system_time(s.st_mtime),
+            #[cfg(target_os = "macos")]
+            nlink: s.st_nlink as u64,
+            #[cfg(not(target_os = "macos"))]
             nlink: s.st_nlink,
+            #[cfg(target_os = "macos")]
+            rdev: s.st_rdev as u64,
+            #[cfg(not(target_os = "macos"))]
             rdev: s.st_rdev,
             size: s.st_size as u64,
             uid: s.st_uid,
