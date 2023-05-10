@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: brew update && brew install samba
+        run: brew update && brew install samba pkg-config && brew link --force samba
       - name: Build
         run: cargo build --all-targets
       - name: Run tests
