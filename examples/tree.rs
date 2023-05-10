@@ -45,7 +45,7 @@ fn main() {
 
 /// Read a secret from tty with customisable prompt
 fn read_secret_from_tty(prompt: &str) -> std::io::Result<String> {
-    rpassword::read_password_from_tty(Some(prompt))
+    rpassword::prompt_password(prompt)
 }
 
 fn tree(client: &SmbClient, uri: &str, depth: usize) {

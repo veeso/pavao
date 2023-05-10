@@ -52,6 +52,9 @@ impl From<stat> for SmbStat {
             #[cfg(not(target_os = "macos"))]
             blksize: s.st_blksize,
             created: time_t_to_system_time(s.st_ctime),
+            #[cfg(target_os = "macos")]
+            dev: s.st_dev,
+            #[cfg(not(target_os = "macos"))]
             dev: s.st_dev as i32,
             gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
