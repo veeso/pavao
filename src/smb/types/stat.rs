@@ -2,13 +2,14 @@
 //!
 //! file stat type
 
-use crate::{libsmbclient::libsmb_file_info, utils::char_ptr_to_string};
-use crate::{SmbDirentType, SmbError};
-
-use super::SmbMode;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use libc::{stat, time_t};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use super::SmbMode;
+use crate::libsmbclient::libsmb_file_info;
+use crate::utils::char_ptr_to_string;
+use crate::{SmbDirentType, SmbError};
 
 /// DOS Attribute mask for DIRECTORY
 const FILE_ATTRIBUTE_DIRECTORY: u16 = 0x0010;
@@ -137,9 +138,9 @@ fn time_t_to_system_time(t: time_t) -> SystemTime {
 #[cfg(test)]
 mod test {
 
-    use super::*;
-
     use pretty_assertions::assert_ne;
+
+    use super::*;
 
     #[test]
     fn should_convert_time_t_into_system_time() {

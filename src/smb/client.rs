@@ -2,19 +2,18 @@
 //!
 //! module which exposes the Smb Client
 
+use std::sync::Mutex;
+use std::time::Duration;
+use std::{mem, ptr};
+
+use libc::{self, c_char, c_int};
+
 use super::{
     AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
     SmbStat,
 };
-use crate::{utils, SmbDirent};
-use crate::{SmbError, SmbResult};
-
 use crate::libsmbclient::{SMBCCTX as SmbContext, *};
-use libc::{self, c_char, c_int};
-use std::mem;
-use std::ptr;
-use std::sync::Mutex;
-use std::time::Duration;
+use crate::{utils, SmbDirent, SmbError, SmbResult};
 
 lazy_static! {
     static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
@@ -351,9 +350,7 @@ impl SmbClient {
         &self,
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
     ) -> std::io::Result<T> {
-        unsafe {
-            get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL))
-        }
+        unsafe { get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL)) }
     }
 
     /// Setup options in the context
@@ -452,14 +449,15 @@ impl Drop for SmbClient {
 #[cfg(test)]
 #[cfg(feature = "with-containers")]
 mod test {
-    use super::*;
-    use crate::{mock, SmbDirentType};
-
-    use pretty_assertions::{assert_eq, assert_ne};
-    use serial_test::serial;
     use std::io::{Cursor, Read};
     use std::path::Path;
     use std::time::UNIX_EPOCH;
+
+    use pretty_assertions::{assert_eq, assert_ne};
+    use serial_test::serial;
+
+    use super::*;
+    use crate::{mock, SmbDirentType};
 
     #[test]
     #[serial]

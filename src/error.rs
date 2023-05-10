@@ -4,6 +4,7 @@
 
 use std::ffi::NulError;
 use std::io::Error as IoError;
+
 use thiserror::Error;
 
 /// Result returned by the Smb client

@@ -1,9 +1,9 @@
-use argh::FromArgs;
-
-use pavao::{SmbClient, SmbCredentials, SmbOpenOptions, SmbOptions};
 use std::fs::File;
 use std::io;
 use std::path::Path;
+
+use argh::FromArgs;
+use pavao::{SmbClient, SmbCredentials, SmbOpenOptions, SmbOptions};
 
 #[derive(FromArgs)]
 #[argh(description = "

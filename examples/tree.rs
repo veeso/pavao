@@ -1,7 +1,7 @@
-use argh::FromArgs;
-
-use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOptions, SmbStat};
 use std::path::PathBuf;
+
+use argh::FromArgs;
+use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOptions, SmbStat};
 
 #[derive(FromArgs)]
 #[argh(description = "

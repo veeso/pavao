@@ -2,16 +2,15 @@
 //!
 //! utilities module
 
-use crate::SmbError;
-
-use super::SmbResult;
-
-use libc::{c_char, c_int};
-
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::slice;
+
+use libc::{c_char, c_int};
+
+use super::SmbResult;
+use crate::SmbError;
 
 #[inline(always)]
 /// Ok(ptr) for non-null ptr or Err(last_os_error) otherwise
@@ -111,9 +110,9 @@ pub fn char_ptr_to_string(ptr: *const c_char) -> SmbResult<String> {
 #[cfg(test)]
 mod test {
 
-    use super::*;
-
     use pretty_assertions::assert_eq;
+
+    use super::*;
 
     #[test]
     fn should_convert_str_to_cstring() {
