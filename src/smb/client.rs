@@ -466,10 +466,7 @@ mod test {
     fn should_initialize_client() {
         mock::logger();
         let client = init_client();
-        assert_eq!(
-            client.uri.as_str(),
-            "smb://192.168.1.216:4445/main storage/temp"
-        );
+        assert_eq!(client.uri.as_str(), "smb://localhost:3445/temp");
         assert_eq!(client.ctx.is_null(), false);
         finalize_client(client);
     }
@@ -623,11 +620,11 @@ mod test {
         assert_eq!(abc.name(), "ghi");
         assert_eq!(abc.get_type(), SmbDirentType::File);
         let def = entries.get(1).unwrap();
-        assert_eq!(def.name(), "jkl");
-        assert_eq!(def.get_type(), SmbDirentType::File);
+        assert_eq!(def.name(), "hil");
+        assert_eq!(def.get_type(), SmbDirentType::Dir);
         let jfk = entries.get(2).unwrap();
-        assert_eq!(jfk.name(), "hil");
-        assert_eq!(jfk.get_type(), SmbDirentType::Dir);
+        assert_eq!(jfk.name(), "jkl");
+        assert_eq!(jfk.get_type(), SmbDirentType::File);
         finalize_client(client);
     }
 

@@ -80,14 +80,6 @@ pub struct libsmb_file_info {
     pub short_name: *mut c_char,
 }
 
-// impl std::fmt::Debug for timespec {
-//     fn fmt(&self, f:&mut Formatter<'_>) -> std::fmt::Result {
-//         f.debug_struct("timespec")
-//             .field("tv_sec", &self.tv_sec)
-//             .field("tv_nsec", &self.tv_nsec)
-//             .finish()
-//     }
-// }
 impl clone::Clone for libsmb_file_info {
     fn clone(&self) -> Self {
         *self

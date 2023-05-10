@@ -1,8 +1,6 @@
 use argh::FromArgs;
 use env_logger;
-use pavao::{
-    SmbClient, SmbCredentials, SmbDirent, SmbDirentInfo, SmbDirentType, SmbOptions, SmbStat,
-};
+use pavao::{SmbClient, SmbCredentials, SmbDirentInfo, SmbDirentType, SmbOptions};
 use std::path::PathBuf;
 
 #[derive(FromArgs)]
@@ -53,19 +51,17 @@ fn read_secret_from_tty(prompt: &str) -> std::io::Result<String> {
     }
 }
 
-
 fn treeplus(client: &SmbClient, uri: &str, depth: usize) {
     let vec = client.list_dirplus(uri).unwrap();
     for entityplus in vec.into_iter() {
         let entityplus_uri = entityplus_uri(&entityplus, uri);
-        print_entry_plus(&entityplus,depth);
+        print_entry_plus(&entityplus, depth);
         // if is dir, iter directory
         if entityplus.get_type() == SmbDirentType::Dir {
             treeplus(client, &entityplus_uri.as_str(), depth + 1)
         }
     }
 }
-
 
 fn entityplus_uri(entity: &SmbDirentInfo, path: &str) -> String {
     let mut p = PathBuf::from(path);
