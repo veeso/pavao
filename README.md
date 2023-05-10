@@ -13,7 +13,7 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.1.2 (26/05/2022)</p>
+<p align="center">Current version: 0.2.0 (10/05/2023)</p>
 
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
@@ -99,7 +99,7 @@ Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which
 ### Add pavao to your Cargo.toml 🦀
 
 ```toml
-pavao = "0.1.2"
+pavao = "0.2"
 ```
 
 ### Install pavao C dependencies on your system 🖥️

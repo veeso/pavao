@@ -8,7 +8,7 @@
 //! ### Adding `pavao` to your cargo toml dependencies:
 //!
 //! ```toml
-//! pavao = "0.1.1"
+//! pavao = "0.2"
 //! ```
 //!
 //! ## Example
