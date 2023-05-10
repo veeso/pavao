@@ -2,11 +2,11 @@
 //!
 //! module which exposes the smb dir entry
 
-use crate::utils::char_ptr_to_string;
-use crate::SmbError;
+use libc::c_uint;
 
 use crate::libsmbclient::smbc_dirent;
-use libc::c_uint;
+use crate::utils::char_ptr_to_string;
+use crate::SmbError;
 
 /// Smb directory entity
 #[derive(Debug, Clone)]
@@ -100,10 +100,10 @@ impl TryFrom<c_uint> for SmbDirentType {
 #[cfg(test)]
 mod test {
 
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use crate::utils;
-
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn should_convert_dirent_type_to_uint() {

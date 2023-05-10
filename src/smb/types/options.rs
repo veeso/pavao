@@ -140,9 +140,9 @@ impl From<SmbEncryptionLevel> for smbc_smb_encrypt_level {
 #[cfg(test)]
 mod test {
 
-    use super::*;
-
     use pretty_assertions::assert_eq;
+
+    use super::*;
 
     #[test]
     fn should_initialize_smb_options() {

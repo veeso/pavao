@@ -14,4 +14,4 @@ pub use dirent::{SmbDirent, SmbDirentType};
 pub use file::{SmbFile, SmbOpenOptions};
 pub use mode::{SmbMode, SmbModeClass};
 pub use options::{SmbEncryptionLevel, SmbOptions, SmbShareMode};
-pub use stat::SmbStat;
+pub use stat::{SmbDirentInfo, SmbStat};

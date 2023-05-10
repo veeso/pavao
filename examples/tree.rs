@@ -1,7 +1,7 @@
-use argh::FromArgs;
-use env_logger;
-use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOptions, SmbStat};
 use std::path::PathBuf;
+
+use argh::FromArgs;
+use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOptions, SmbStat};
 
 #[derive(FromArgs)]
 #[argh(description = "
@@ -45,10 +45,7 @@ fn main() {
 
 /// Read a secret from tty with customisable prompt
 fn read_secret_from_tty(prompt: &str) -> std::io::Result<String> {
-    match rpassword::read_password_from_tty(Some(prompt)) {
-        Ok(p) => Ok(p),
-        Err(err) => Err(err),
-    }
+    rpassword::prompt_password(prompt)
 }
 
 fn tree(client: &SmbClient, uri: &str, depth: usize) {

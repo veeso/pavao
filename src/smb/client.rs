@@ -2,16 +2,18 @@
 //!
 //! module which exposes the Smb Client
 
-use super::{AuthService, SmbCredentials, SmbFile, SmbMode, SmbOpenOptions, SmbOptions, SmbStat};
-use crate::{utils, SmbDirent};
-use crate::{SmbError, SmbResult};
-
-use crate::libsmbclient::{SMBCCTX as SmbContext, *};
-use libc::{self, c_char, c_int};
-use std::mem;
-use std::ptr;
 use std::sync::Mutex;
 use std::time::Duration;
+use std::{mem, ptr};
+
+use libc::{self, c_char, c_int};
+
+use super::{
+    AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
+    SmbStat,
+};
+use crate::libsmbclient::{SMBCCTX as SmbContext, *};
+use crate::{utils, SmbDirent, SmbError, SmbResult};
 
 lazy_static! {
     static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
@@ -204,6 +206,55 @@ impl SmbClient {
         Ok(entries)
     }
 
+    /// List content of directory with metadata at 'path'
+    pub fn list_dirplus<S>(&self, path: S) -> SmbResult<Vec<SmbDirentInfo>>
+    where
+        S: AsRef<str>,
+    {
+        trace!("listing files with metadata at {}", path.as_ref());
+        let path = utils::str_to_cstring(self.uri(path))?;
+        let opendir_fn = self.get_fn(smbc_getFunctionOpendir)?;
+        let fd = opendir_fn(self.ctx, path.as_ptr());
+        if fd.is_null() {
+            error!("failed to open directory: returned a bad file descriptor");
+            return Err(SmbError::BadFileDescriptor);
+        }
+        let closedir_fn = self.get_fn(smbc_getFunctionClosedir)?;
+        let mut entries = Vec::new();
+        let readdirplus_fn = self.get_fn(smbc_getFunctionReaddirPlus)?;
+        loop {
+            let direntplus = readdirplus_fn(self.ctx, fd);
+            if direntplus.is_null() {
+                break;
+            }
+            unsafe {
+                match SmbDirentInfo::try_from(*direntplus) {
+                    Ok(direntplus)
+                        if direntplus.name() != "."
+                            && direntplus.name() != ".."
+                            && !direntplus.name().is_empty() =>
+                    {
+                        trace!("found direntplus: {:?}", direntplus);
+                        entries.push(direntplus);
+                    }
+                    Ok(_) => {
+                        trace!("ignoring '..', '.' directories");
+                    }
+                    Err(e) => {
+                        error!(
+                            "failed to decode directory entity with metadata {:?}: {}",
+                            direntplus, e
+                        );
+                    }
+                }
+            }
+        }
+        trace!("decoded {} direntpluses", entries.len());
+        // Close directory
+        let _ = closedir_fn(self.ctx, fd);
+        Ok(entries)
+    }
+
     /// Make directory at `p` with provided `mode`
     pub fn mkdir<S>(&self, p: S, mode: SmbMode) -> SmbResult<()>
     where
@@ -299,9 +350,7 @@ impl SmbClient {
         &self,
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
     ) -> std::io::Result<T> {
-        unsafe {
-            get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL as i32))
-        }
+        unsafe { get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL)) }
     }
 
     /// Setup options in the context
@@ -400,14 +449,15 @@ impl Drop for SmbClient {
 #[cfg(test)]
 #[cfg(feature = "with-containers")]
 mod test {
-    use super::*;
-    use crate::{mock, SmbDirentType};
-
-    use pretty_assertions::{assert_eq, assert_ne};
-    use serial_test::serial;
     use std::io::{Cursor, Read};
     use std::path::Path;
     use std::time::UNIX_EPOCH;
+
+    use pretty_assertions::{assert_eq, assert_ne};
+    use serial_test::serial;
+
+    use super::*;
+    use crate::{mock, SmbDirentType};
 
     #[test]
     #[serial]
@@ -547,6 +597,32 @@ mod test {
         let jfk = entries.get(2).unwrap();
         assert_eq!(jfk.name(), "jfk");
         assert_eq!(jfk.get_type(), SmbDirentType::Dir);
+        finalize_client(client);
+    }
+
+    #[test]
+    #[serial]
+    fn should_list_dirplus() {
+        mock::logger();
+        let client = init_client();
+        create_file_at(&client, "/cargo-test/ghi", "Hello, World!\n");
+        create_file_at(&client, "/cargo-test/jkl", "Hello, World!\n");
+        assert!(client
+            .mkdir("/cargo-test/hil", SmbMode::from(0o755))
+            .is_ok());
+        // list dir
+        let mut entries = client.list_dir("/cargo-test").unwrap();
+        entries.sort_by(|a, b| a.name().cmp(&b.name()));
+        assert_eq!(entries.len(), 3);
+        let abc = entries.get(0).unwrap();
+        assert_eq!(abc.name(), "ghi");
+        assert_eq!(abc.get_type(), SmbDirentType::File);
+        let def = entries.get(1).unwrap();
+        assert_eq!(def.name(), "hil");
+        assert_eq!(def.get_type(), SmbDirentType::Dir);
+        let jfk = entries.get(2).unwrap();
+        assert_eq!(jfk.name(), "jkl");
+        assert_eq!(jfk.get_type(), SmbDirentType::File);
         finalize_client(client);
     }
 

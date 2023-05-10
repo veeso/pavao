@@ -2,15 +2,15 @@
 //!
 //! file type returned by open functions on server
 
-use crate::utils;
-use crate::SmbClient;
+use std::io::{self, Read, Seek, SeekFrom, Write};
+
+use libc::{c_int, c_void, mode_t, off_t};
 
 use crate::libsmbclient::{
     smbc_getFunctionClose, smbc_getFunctionLseek, smbc_getFunctionRead, smbc_getFunctionWrite,
     SMBCFILE,
 };
-use libc::{c_int, c_void, mode_t, off_t};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use crate::{utils, SmbClient};
 
 pub struct SmbFile<'a> {
     smbc: &'a SmbClient,
@@ -174,9 +174,9 @@ impl SmbOpenOptions {
 #[cfg(test)]
 mod test {
 
-    use super::*;
-
     use pretty_assertions::assert_eq;
+
+    use super::*;
 
     #[test]
     fn should_initialize_open_options() {
