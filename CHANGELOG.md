@@ -13,6 +13,7 @@
 Released on 10/05/2023
 
 - [Issue 3](https://github.com/veeso/pavao/issues/3): implemented `list_dirplus` to get the list of files in the current path with all the metadata. credit: @hexofyore
+- Added `no-log` feature to disable logging
 
 ## 0.1.2
 
