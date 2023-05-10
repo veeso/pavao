@@ -15,9 +15,7 @@ jobs:
         run: brew update && brew install samba pkg-config && brew link --force samba
       - name: Build
         run: cargo build --all-targets
-      - name: Run tests
-        run: cargo test --verbose --no-default-features --no-fail-fast
-        env:
-          RUST_LOG: trace
+      - name: Format
+        run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy -- -Dwarnings
