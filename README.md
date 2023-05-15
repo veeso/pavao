@@ -13,7 +13,7 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.2.0 (10/05/2023)</p>
+<p align="center">Current version: 0.2.1 (15/05/2023)</p>
 
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
