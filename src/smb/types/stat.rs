@@ -58,6 +58,8 @@ impl From<stat> for SmbStat {
             dev: s.st_dev,
             #[cfg(linux_x86_64)]
             dev: s.st_dev as i32,
+            #[cfg(linux_aarch64)]
+            dev: s.st_dev,
             gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
             modified: time_t_to_system_time(s.st_mtime),
@@ -71,6 +73,8 @@ impl From<stat> for SmbStat {
             rdev: s.st_rdev as u64,
             #[cfg(linux_x86_64)]
             rdev: s.st_rdev,
+            #[cfg(linux_aarch64)]
+            rdev: s.st_rdev as u64,
             size: s.st_size as u64,
             uid: s.st_uid,
         }
