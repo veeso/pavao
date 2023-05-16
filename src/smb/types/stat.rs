@@ -59,7 +59,7 @@ impl From<stat> for SmbStat {
             #[cfg(linux_x86_64)]
             dev: s.st_dev as i32,
             #[cfg(linux_aarch64)]
-            dev: s.st_dev,
+            dev: s.st_dev as i32,
             gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
             modified: time_t_to_system_time(s.st_mtime),
