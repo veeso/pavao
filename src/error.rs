@@ -21,6 +21,8 @@ pub enum SmbError {
     Io(IoError),
     #[error("bad path: {0}")]
     NulInPath(NulError),
+    #[error("mutex error")]
+    Mutex,
 }
 
 impl PartialEq for SmbError {

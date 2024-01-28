@@ -2,7 +2,7 @@
 //!
 //! module which exposes the Smb Client
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::{mem, ptr};
 
@@ -12,16 +12,47 @@ use super::{
     AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
     SmbStat,
 };
-use crate::libsmbclient::{SMBCCTX as SmbContext, *};
+use crate::libsmbclient::{SMBCCTX, *};
 use crate::{utils, SmbDirent, SmbError, SmbResult};
+
+struct SmbContext {
+    inner: *mut SMBCCTX,
+}
+
+impl SmbContext {
+    /// Create a null context
+    fn null() -> Self {
+        SmbContext {
+            inner: ptr::null_mut(),
+        }
+    }
+
+    /// Set context
+    pub fn set(&mut self, ctx: *mut SMBCCTX) {
+        self.inner = ctx;
+    }
+
+    /// Get context
+    pub fn get(&self) -> *mut SMBCCTX {
+        self.inner
+    }
+
+    /// Check if context is null
+    pub fn is_null(&self) -> bool {
+        self.get().is_null()
+    }
+}
+
+unsafe impl Sync for SmbContext {}
+unsafe impl Send for SmbContext {}
 
 lazy_static! {
     static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
+    static ref SMBCTX: Arc<Mutex<SmbContext>> = Arc::new(Mutex::new(SmbContext::null()));
 }
 
 /// Smb protocol client
 pub struct SmbClient {
-    pub(crate) ctx: *mut SmbContext,
     uri: String,
 }
 
@@ -29,25 +60,31 @@ impl SmbClient {
     /// Initialize a new `SmbClient` with the provided credentials to connect to the remote smb server
     pub fn new(credentials: SmbCredentials, options: SmbOptions) -> SmbResult<Self> {
         let uri = Self::build_uri(credentials.server.as_str(), credentials.share.as_str());
-        let mut smbc = SmbClient {
-            ctx: ptr::null_mut(),
-            uri,
-        };
+        let smbc = SmbClient { uri };
         // insert credentials
         trace!("creating context...");
-        unsafe {
-            let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
-            // set options
-            trace!("configuring client options");
-            smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
-            Self::setup_options(ctx, options);
-            // set ctx
-            smbc.ctx = utils::result_from_ptr_mut(smbc_init_context(ctx))?;
-            trace!("context initialized");
-            AUTH_SERVICE
-                .lock()
-                .unwrap()
-                .insert(Self::auth_service_uuid(smbc.ctx), credentials);
+        // get current context
+        let is_ctx_null = SMBCTX.lock().map_err(|_| SmbError::Mutex)?.is_null();
+        // if context is null, create a new one
+        if is_ctx_null {
+            unsafe {
+                let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
+                // set options
+                trace!("configuring client options");
+                smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
+                Self::setup_options(ctx, options);
+
+                // set ctx
+                let smb_ctx = utils::result_from_ptr_mut(smbc_init_context(ctx))?;
+                trace!("context initialized");
+                AUTH_SERVICE
+                    .lock()
+                    .unwrap()
+                    .insert(Self::auth_service_uuid(smb_ctx), credentials);
+
+                // set context
+                SMBCTX.lock().map_err(|_| SmbError::Mutex)?.set(smb_ctx);
+            }
         }
         Ok(smbc)
     }
@@ -56,7 +93,7 @@ impl SmbClient {
     pub fn get_netbios_name(&self) -> SmbResult<String> {
         trace!("getting netbios name");
         unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(self.ctx))?;
+            let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(self.ctx()?))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
         }
     }
@@ -68,7 +105,7 @@ impl SmbClient {
     {
         trace!("setting netbios name to {}", name.as_ref());
         let name = utils::str_to_cstring(name)?;
-        unsafe { smbc_setNetbiosName(self.ctx, name.into_raw()) }
+        unsafe { smbc_setNetbiosName(self.ctx()?, name.into_raw()) }
         Ok(())
     }
 
@@ -76,7 +113,7 @@ impl SmbClient {
     pub fn get_workgroup(&self) -> SmbResult<String> {
         trace!("getting workgroup");
         unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(self.ctx))?;
+            let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(self.ctx()?))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
         }
     }
@@ -88,7 +125,7 @@ impl SmbClient {
     {
         trace!("configuring workgroup to {}", name.as_ref());
         let name = utils::str_to_cstring(name)?;
-        unsafe { smbc_setWorkgroup(self.ctx, name.into_raw()) }
+        unsafe { smbc_setWorkgroup(self.ctx()?, name.into_raw()) }
         Ok(())
     }
 
@@ -96,7 +133,7 @@ impl SmbClient {
     pub fn get_user(&self) -> SmbResult<String> {
         trace!("getting current username");
         unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getUser(self.ctx))?;
+            let ptr = utils::result_from_ptr_mut(smbc_getUser(self.ctx()?))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
         }
     }
@@ -108,20 +145,20 @@ impl SmbClient {
     {
         trace!("configuring current username as {}", name.as_ref());
         let name = utils::str_to_cstring(name)?;
-        unsafe { smbc_setUser(self.ctx, name.into_raw()) }
+        unsafe { smbc_setUser(self.ctx()?, name.into_raw()) }
         Ok(())
     }
 
     /// Get timeout from server
     pub fn get_timeout(&self) -> SmbResult<Duration> {
         trace!("getting timeout");
-        unsafe { Ok(Duration::from_millis(smbc_getTimeout(self.ctx) as u64)) }
+        unsafe { Ok(Duration::from_millis(smbc_getTimeout(self.ctx()?) as u64)) }
     }
 
     /// Set timeout to server
     pub fn set_timeout(&self, timeout: Duration) -> SmbResult<()> {
         trace!("setting timeout to {}ms", timeout.as_millis());
-        unsafe { smbc_setTimeout(self.ctx, timeout.as_millis() as c_int) }
+        unsafe { smbc_setTimeout(self.ctx()?, timeout.as_millis() as c_int) }
         Ok(())
     }
 
@@ -141,8 +178,8 @@ impl SmbClient {
     {
         trace!("unlinking entry at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        let unlink_fn = self.get_fn(smbc_getFunctionUnlink)?;
-        utils::to_result_with_ioerror((), unlink_fn(self.ctx, path.as_ptr()))
+        let unlink_fn = self.get_fn(self.ctx()?, smbc_getFunctionUnlink)?;
+        utils::to_result_with_ioerror((), unlink_fn(self.ctx()?, path.as_ptr()))
     }
 
     /// Rename file at `orig_url` to `new_url`
@@ -153,10 +190,15 @@ impl SmbClient {
         trace!("renaming {} to {}", orig_url.as_ref(), new_url.as_ref());
         let orig_url = utils::str_to_cstring(self.uri(orig_url))?;
         let new_url = utils::str_to_cstring(self.uri(new_url))?;
-        let rename_fn = self.get_fn(smbc_getFunctionRename)?;
+        let rename_fn = self.get_fn(self.ctx()?, smbc_getFunctionRename)?;
         utils::to_result_with_ioerror(
             (),
-            rename_fn(self.ctx, orig_url.as_ptr(), self.ctx, new_url.as_ptr()),
+            rename_fn(
+                self.ctx()?,
+                orig_url.as_ptr(),
+                self.ctx()?,
+                new_url.as_ptr(),
+            ),
         )
     }
 
@@ -167,17 +209,17 @@ impl SmbClient {
     {
         trace!("listing files at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        let opendir_fn = self.get_fn(smbc_getFunctionOpendir)?;
-        let fd = opendir_fn(self.ctx, path.as_ptr());
+        let opendir_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpendir)?;
+        let fd = opendir_fn(self.ctx()?, path.as_ptr());
         if fd.is_null() {
             error!("failed to open directory: returned a bad file descriptor");
             return Err(SmbError::BadFileDescriptor);
         }
-        let closedir_fn = self.get_fn(smbc_getFunctionClosedir)?;
+        let closedir_fn = self.get_fn(self.ctx()?, smbc_getFunctionClosedir)?;
         let mut entries = Vec::new();
-        let readdir_fn = self.get_fn(smbc_getFunctionReaddir)?;
+        let readdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionReaddir)?;
         loop {
-            let dirent = readdir_fn(self.ctx, fd);
+            let dirent = readdir_fn(self.ctx()?, fd);
             if dirent.is_null() {
                 break;
             }
@@ -202,7 +244,7 @@ impl SmbClient {
         }
         trace!("decoded {} dirents", entries.len());
         // Close directory
-        let _ = closedir_fn(self.ctx, fd);
+        let _ = closedir_fn(self.ctx()?, fd);
         Ok(entries)
     }
 
@@ -213,17 +255,17 @@ impl SmbClient {
     {
         trace!("listing files with metadata at {}", path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        let opendir_fn = self.get_fn(smbc_getFunctionOpendir)?;
-        let fd = opendir_fn(self.ctx, path.as_ptr());
+        let opendir_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpendir)?;
+        let fd = opendir_fn(self.ctx()?, path.as_ptr());
         if fd.is_null() {
             error!("failed to open directory: returned a bad file descriptor");
             return Err(SmbError::BadFileDescriptor);
         }
-        let closedir_fn = self.get_fn(smbc_getFunctionClosedir)?;
+        let closedir_fn = self.get_fn(self.ctx()?, smbc_getFunctionClosedir)?;
         let mut entries = Vec::new();
-        let readdirplus_fn = self.get_fn(smbc_getFunctionReaddirPlus)?;
+        let readdirplus_fn = self.get_fn(self.ctx()?, smbc_getFunctionReaddirPlus)?;
         loop {
-            let direntplus = readdirplus_fn(self.ctx, fd);
+            let direntplus = readdirplus_fn(self.ctx()?, fd);
             if direntplus.is_null() {
                 break;
             }
@@ -251,7 +293,7 @@ impl SmbClient {
         }
         trace!("decoded {} direntpluses", entries.len());
         // Close directory
-        let _ = closedir_fn(self.ctx, fd);
+        let _ = closedir_fn(self.ctx()?, fd);
         Ok(entries)
     }
 
@@ -262,8 +304,8 @@ impl SmbClient {
     {
         trace!("making directory at {} with mode {:?}", p.as_ref(), mode);
         let p = utils::str_to_cstring(self.uri(p))?;
-        let mkdir_fn = self.get_fn(smbc_getFunctionMkdir)?;
-        utils::to_result_with_ioerror((), mkdir_fn(self.ctx, p.as_ptr(), mode.into()))
+        let mkdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionMkdir)?;
+        utils::to_result_with_ioerror((), mkdir_fn(self.ctx()?, p.as_ptr(), mode.into()))
     }
 
     /// Remove directory at `p`
@@ -273,8 +315,8 @@ impl SmbClient {
     {
         trace!("removing directory at {}", p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
-        let rmdir_fn = self.get_fn(smbc_getFunctionRmdir)?;
-        utils::to_result_with_ioerror((), rmdir_fn(self.ctx, p.as_ptr()))
+        let rmdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionRmdir)?;
+        utils::to_result_with_ioerror((), rmdir_fn(self.ctx()?, p.as_ptr()))
     }
 
     /// Stat file at `p` and return its metadata
@@ -286,8 +328,8 @@ impl SmbClient {
         let p = utils::str_to_cstring(self.uri(p))?;
         unsafe {
             let mut st: libc::stat = mem::zeroed();
-            let stat_fn = self.get_fn(smbc_getFunctionStat)?;
-            if stat_fn(self.ctx, p.as_ptr(), &mut st) < 0 {
+            let stat_fn = self.get_fn(self.ctx()?, smbc_getFunctionStat)?;
+            if stat_fn(self.ctx()?, p.as_ptr(), &mut st) < 0 {
                 error!("failed to stat file: {}", utils::last_os_error());
                 Err(utils::last_os_error())
             } else {
@@ -303,8 +345,8 @@ impl SmbClient {
     {
         trace!("changing mode for {} with {:?}", p.as_ref(), mode);
         let p = utils::str_to_cstring(self.uri(p))?;
-        let chmod_fn = self.get_fn(smbc_getFunctionChmod)?;
-        utils::to_result_with_ioerror((), chmod_fn(self.ctx, p.as_ptr(), mode.into()))
+        let chmod_fn = self.get_fn(self.ctx()?, smbc_getFunctionChmod)?;
+        utils::to_result_with_ioerror((), chmod_fn(self.ctx()?, p.as_ptr(), mode.into()))
     }
 
     /// Print file at `p` using the `print_queue`
@@ -315,10 +357,10 @@ impl SmbClient {
         trace!("printing {} to {} queue", p.as_ref(), print_queue.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         let print_queue = utils::str_to_cstring(self.uri(print_queue))?;
-        let print_fn = self.get_fn(smbc_getFunctionPrintFile)?;
+        let print_fn = self.get_fn(self.ctx()?, smbc_getFunctionPrintFile)?;
         utils::to_result_with_ioerror(
             (),
-            print_fn(self.ctx, p.as_ptr(), self.ctx, print_queue.as_ptr()),
+            print_fn(self.ctx()?, p.as_ptr(), self.ctx()?, print_queue.as_ptr()),
         )
     }
 
@@ -346,11 +388,13 @@ impl SmbClient {
     }
 
     /// Callback getter
+    #[allow(improper_ctypes_definitions)]
     pub(crate) fn get_fn<T>(
         &self,
+        ctx: *mut SMBCCTX,
         get_func: unsafe extern "C" fn(*mut SMBCCTX) -> Option<T>,
     ) -> std::io::Result<T> {
-        unsafe { get_func(self.ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL)) }
+        unsafe { get_func(ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL)) }
     }
 
     /// Setup options in the context
@@ -402,6 +446,11 @@ impl SmbClient {
     fn auth_service_uuid(ctx: *mut SMBCCTX) -> String {
         format!("{:?}", ctx)
     }
+
+    /// Get underlying context
+    pub fn ctx(&self) -> SmbResult<*mut SMBCCTX> {
+        Ok(SMBCTX.lock().map_err(|_| SmbError::Mutex)?.get())
+    }
 }
 
 impl<'a> SmbClient {
@@ -412,10 +461,10 @@ impl<'a> SmbClient {
         options: SmbOpenOptions,
     ) -> SmbResult<SmbFile<'a>> {
         trace!("opening {} with {:?}", path.as_ref(), options);
-        let open_fn = self.get_fn(smbc_getFunctionOpen)?;
+        let open_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpen)?;
         let path = utils::str_to_cstring(self.uri(path))?;
         let fd = utils::result_from_ptr_mut(open_fn(
-            self.ctx,
+            self.ctx()?,
             path.as_ptr(),
             options.to_flags(),
             options.mode,
@@ -435,12 +484,16 @@ impl Drop for SmbClient {
     fn drop(&mut self) {
         trace!("removing uri from auth service");
         unsafe {
-            AUTH_SERVICE
-                .lock()
-                .unwrap()
-                .remove(Self::auth_service_uuid(self.ctx));
-            trace!("closing smbclient");
-            smbc_free_context(self.ctx, 1_i32);
+            if let Ok(mut context) = SMBCTX.lock() {
+                AUTH_SERVICE
+                    .lock()
+                    .unwrap()
+                    .remove(Self::auth_service_uuid(context.get()));
+                trace!("closing smbclient");
+                smbc_free_context(context.get(), 1_i32);
+                // set context to null
+                context.set(ptr::null_mut());
+            }
         }
         trace!("smbclient context freed");
     }
@@ -465,7 +518,7 @@ mod test {
         mock::logger();
         let client = init_client();
         assert_eq!(client.uri.as_str(), "smb://localhost:3445/temp");
-        assert_eq!(client.ctx.is_null(), false);
+        assert_eq!(client.ctx().unwrap().is_null(), false);
         finalize_client(client);
     }
 

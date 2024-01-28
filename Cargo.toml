@@ -1,6 +1,6 @@
 [package]
 name = "pavao"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
 edition = "2021"
 categories = ["network-programming"]
@@ -9,7 +9,7 @@ documentation = "https://docs.rs/pavao"
 homepage = "https://github.com/veeso/pavao"
 include = ["src/**/*", "build.rs", "LICENSE", "README.md", "CHANGELOG.md"]
 keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]
-license = "GPL-3.0+"
+license = "GPL-3.0"
 readme = "README.md"
 repository = "https://github.com/veeso/pavao"
 
@@ -30,18 +30,18 @@ thiserror = "^1.0"
 
 [dev-dependencies]
 argh = "0.1.7"
-env_logger = "^0.10"
+env_logger = "^0.11"
 pretty_assertions = "^1.0.0"
 rpassword = "7.2"
-serial_test = "^2"
+serial_test = "^3"
 
 [build-dependencies]
-cfg_aliases = "0.1"
+cfg_aliases = "0.2"
 pkg-config = "0.3.25"
 
 [features]
 debug = []
-no-log = [ "log/max_level_off" ]
+no-log = ["log/max_level_off"]
 with-containers = []
 
 [[example]]
