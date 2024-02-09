@@ -46,11 +46,41 @@ impl From<statvfs> for SmbStatVfs {
         Self {
             bsize: s.f_bsize,
             frsize: s.f_frsize,
+            #[cfg(target_os = "macos")]
+            blocks: s.f_blocks as u64,
+            #[cfg(linux_x86_64)]
             blocks: s.f_blocks,
+            #[cfg(linux_aarch64)]
+            blocks: s.f_blocks,
+            #[cfg(target_os = "macos")]
+            bfree: s.f_bfree as u64,
+            #[cfg(linux_x86_64)]
             bfree: s.f_bfree,
+            #[cfg(linux_aarch64)]
+            bfree: s.f_bfree,
+            #[cfg(target_os = "macos")]
+            bavail: s.f_bavail as u64,
+            #[cfg(linux_x86_64)]
             bavail: s.f_bavail,
+            #[cfg(linux_aarch64)]
+            bavail: s.f_bavail,
+            #[cfg(target_os = "macos")]
+            files: s.f_files as u64,
+            #[cfg(linux_x86_64)]
             files: s.f_files,
+            #[cfg(linux_aarch64)]
+            files: s.f_files,
+            #[cfg(target_os = "macos")]
+            ffree: s.f_ffree as u64,
+            #[cfg(linux_x86_64)]
             ffree: s.f_ffree,
+            #[cfg(linux_aarch64)]
+            ffree: s.f_ffree,
+            #[cfg(target_os = "macos")]
+            favail: s.f_favail as u64,
+            #[cfg(linux_x86_64)]
+            favail: s.f_favail,
+            #[cfg(linux_aarch64)]
             favail: s.f_favail,
             fsid: s.f_fsid,
             flag: s.f_flag,
