@@ -4,7 +4,7 @@
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use libc::{stat, time_t};
+use libc::{stat, statvfs, time_t};
 
 use super::SmbMode;
 use crate::libsmbclient::libsmb_file_info;
@@ -13,6 +13,51 @@ use crate::{SmbDirentType, SmbError};
 
 /// DOS Attribute mask for DIRECTORY
 const FILE_ATTRIBUTE_DIRECTORY: u16 = 0x0010;
+
+/// Smb statvfs type
+#[derive(Debug, Clone)]
+pub struct SmbStatVfs {
+    /// File system block size
+    pub bsize: u64,
+    /// Fragment size
+    pub frsize: u64,
+    /// Size of fs in f_frsize units
+    pub blocks: u64,
+    /// Number of free blocks
+    pub bfree: u64,
+    /// Number of free blocks for unprivileged users
+    pub bavail: u64,
+    /// Number of inodes
+    pub files: u64,
+    /// Number of free inodes
+    pub ffree: u64,
+    /// Number of free inodes for unprivileged users
+    pub favail: u64,
+    /// Filesystem ID
+    pub fsid: u64,
+    /// Mount flags
+    pub flag: u64,
+    /// Maximum filename length
+    pub namemax: u64,
+}
+
+impl From<statvfs> for SmbStatVfs {
+    fn from(s: statvfs) -> Self {
+        Self {
+            bsize: s.f_bsize,
+            frsize: s.f_frsize,
+            blocks: s.f_blocks,
+            bfree: s.f_bfree,
+            bavail: s.f_bavail,
+            files: s.f_files,
+            ffree: s.f_ffree,
+            favail: s.f_favail,
+            fsid: s.f_fsid,
+            flag: s.f_flag,
+            namemax: s.f_namemax,
+        }
+    }
+}
 
 /// Smb stat type
 #[derive(Debug, Clone)]

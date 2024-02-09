@@ -3,8 +3,8 @@
 use std::{clone, default, mem, option};
 
 use libc::{
-    c_char, c_int, c_uint, c_ulong, c_ushort, c_void, mode_t, off_t, size_t, ssize_t, stat, time_t,
-    timespec, timeval,
+    c_char, c_int, c_uint, c_ulong, c_ushort, c_void, mode_t, off_t, size_t, ssize_t, stat,
+    statvfs, time_t, timespec, timeval,
 };
 
 #[repr(C)]
@@ -243,6 +243,8 @@ pub type smbc_lseek_fn = option::Option<
 >;
 pub type smbc_stat_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, fname: *const c_char, st: *mut stat) -> c_int>;
+pub type smbc_statvfs_fn =
+    option::Option<extern "C" fn(c: *mut SMBCCTX, fname: *const c_char, st: *mut statvfs) -> c_int>;
 pub type smbc_fstat_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, file: *mut SMBCFILE, st: *mut stat) -> c_int>;
 pub type smbc_close_fn =
@@ -457,6 +459,7 @@ extern "C" {
     pub fn smbc_getFunctionRename(c: *mut SMBCCTX) -> smbc_rename_fn;
     pub fn smbc_getFunctionLseek(c: *mut SMBCCTX) -> smbc_lseek_fn;
     pub fn smbc_getFunctionStat(c: *mut SMBCCTX) -> smbc_stat_fn;
+    pub fn smbc_getFunctionStatVFS(c: *mut SMBCCTX) -> smbc_statvfs_fn;
     pub fn smbc_getFunctionClose(c: *mut SMBCCTX) -> smbc_close_fn;
     pub fn smbc_getFunctionOpendir(c: *mut SMBCCTX) -> smbc_opendir_fn;
     pub fn smbc_getFunctionClosedir(c: *mut SMBCCTX) -> smbc_closedir_fn;
