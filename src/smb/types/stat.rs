@@ -53,12 +53,16 @@ impl From<stat> for SmbStat {
             blksize: s.st_blksize,
             #[cfg(linux_aarch64)]
             blksize: s.st_blksize as i64,
+            #[cfg(linux_riscv64)]
+            blksize: s.st_blksize as i64,
             created: time_t_to_system_time(s.st_ctime),
             #[cfg(target_os = "macos")]
             dev: s.st_dev,
             #[cfg(linux_x86_64)]
             dev: s.st_dev as i32,
             #[cfg(linux_aarch64)]
+            dev: s.st_dev as i32,
+            #[cfg(linux_riscv64)]
             dev: s.st_dev as i32,
             gid: s.st_gid,
             mode: SmbMode::from(s.st_mode),
@@ -69,11 +73,15 @@ impl From<stat> for SmbStat {
             nlink: s.st_nlink,
             #[cfg(linux_aarch64)]
             nlink: s.st_nlink as u64,
+            #[cfg(linux_riscv64)]
+            nlink: s.st_nlink as u64,
             #[cfg(target_os = "macos")]
             rdev: s.st_rdev as u64,
             #[cfg(linux_x86_64)]
             rdev: s.st_rdev,
             #[cfg(linux_aarch64)]
+            rdev: s.st_rdev as u64,
+            #[cfg(linux_riscv64)]
             rdev: s.st_rdev as u64,
             size: s.st_size as u64,
             uid: s.st_uid,
