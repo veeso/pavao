@@ -58,7 +58,7 @@ pub(crate) mod utils;
 pub use error::{SmbError, SmbResult};
 pub use smb::{
     SmbClient, SmbCredentials, SmbDirent, SmbDirentInfo, SmbDirentType, SmbEncryptionLevel,
-    SmbFile, SmbMode, SmbModeClass, SmbOpenOptions, SmbOptions, SmbShareMode, SmbStat,
+    SmbFile, SmbMode, SmbModeClass, SmbOpenOptions, SmbOptions, SmbShareMode, SmbStat, SmbStatVfs,
 };
 
 // -- mock

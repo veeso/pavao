@@ -10,7 +10,7 @@ use libc::{self, c_char, c_int};
 
 use super::{
     AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
-    SmbStat,
+    SmbStat, SmbStatVfs,
 };
 use crate::libsmbclient::{SMBCCTX, *};
 use crate::{utils, SmbDirent, SmbError, SmbResult};
@@ -317,6 +317,25 @@ impl SmbClient {
         let p = utils::str_to_cstring(self.uri(p))?;
         let rmdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionRmdir)?;
         utils::to_result_with_ioerror((), rmdir_fn(self.ctx()?, p.as_ptr()))
+    }
+
+    /// Stat filesystem at `p` and return its metadata
+    pub fn statvfs<S>(&self, p: S) -> SmbResult<SmbStatVfs>
+    where
+        S: AsRef<str>,
+    {
+        trace!("Stating filesystem at {}", p.as_ref());
+        let p = utils::str_to_cstring(self.uri(p))?;
+        unsafe {
+            let mut st: libc::statvfs = mem::zeroed();
+            let statvfs_fn = self.get_fn(self.ctx()?, smbc_getFunctionStatVFS)?;
+            if statvfs_fn(self.ctx()?, p.as_ptr(), &mut st) < 0 {
+                error!("failed to stat filesystem: {}", utils::last_os_error());
+                Err(utils::last_os_error())
+            } else {
+                Ok(SmbStatVfs::from(st))
+            }
+        }
     }
 
     /// Stat file at `p` and return its metadata
@@ -700,6 +719,15 @@ mod test {
             .is_ok());
         // will return err on this server
         let _ = client.rmdir("/cargo-test/testdir");
+        finalize_client(client);
+    }
+
+    #[test]
+    #[serial]
+    fn should_statvfs() {
+        mock::logger();
+        let client = init_client();
+        assert!(client.statvfs("/cargo-test").is_ok());
         finalize_client(client);
     }
 
