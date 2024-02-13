@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.5](#025)
   - [0.2.4](#024)
   - [0.2.3](#023)
   - [0.2.2](#022)
@@ -11,6 +12,13 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.5
+
+Released on 13/02/2024
+
+- Fixed [issue #7](https://github.com/veeso/pavao/issues/7): Added support for Linux RISC-V64
+- Fixed [issue #9](https://github.com/veeso/pavao/issues/10): Added statvfs API
 
 ## 0.2.4
 
