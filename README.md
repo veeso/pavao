@@ -1,7 +1,7 @@
 # Pavão
 
 <p align="center">
-  <img src="docs/images/pavao.png" width="128" height="128" />
+  <img src="docs/images/pavao.png" alt="pavao logo" width="128" height="128" />
 </p>
 
 <p align="center">~ A Rust client library for SMB ~</p>
@@ -23,7 +23,7 @@
   /></a>
   <a href="https://github.com/veeso/pavao/stargazers"
     ><img
-      src="https://img.shields.io/github/stars/veeso/pavao.svg"
+      src="https://img.shields.io/github/stars/veeso/pavao.svg?style=plain"
       alt="Repo stars"
   /></a>
   <a href="https://crates.io/crates/pavao"
@@ -69,6 +69,7 @@
 
 - [Pavão](#pavão)
   - [About Pavão 🦚](#about-pavão-)
+    - [SMB Rust client for Windows](#smb-rust-client-for-windows)
   - [Get started 🏁](#get-started-)
     - [Add pavao to your Cargo.toml 🦀](#add-pavao-to-your-cargotoml-)
     - [Install pavao C dependencies on your system 🖥️](#install-pavao-c-dependencies-on-your-system-️)
@@ -91,6 +92,10 @@
 Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which exposes type-safe functions to interact with the C libsmbclient.
 
 > Pavão |> Pavé |> Animal Crossing |> Carnival |> Rio De Janeiro |> Samba |> SMB
+
+### SMB Rust client for Windows
+
+SMB is natively supported on Windows by the fs module. If you're looking on how to use SMB on Windows with Rust, please check out this article <https://blog.veeso.dev/blog/en/how-to-access-an-smb-share-with-rust-on-windows/> or consider adopting [remotefs-smb](https://github.com/veeso/remotefs-rs-smb).
 
 ---
 
