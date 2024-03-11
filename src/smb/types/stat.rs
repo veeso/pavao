@@ -1,6 +1,7 @@
 //! # Stat
 //!
 //! file stat type
+#![allow(clippy::unnecessary_cast)]
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
