@@ -44,47 +44,59 @@ pub struct SmbStatVfs {
 impl From<statvfs> for SmbStatVfs {
     fn from(s: statvfs) -> Self {
         Self {
-            bsize: s.f_bsize,
-            frsize: s.f_frsize,
+            bsize: s.f_bsize as u64,
+            frsize: s.f_frsize as u64,
             #[cfg(target_os = "macos")]
             blocks: s.f_blocks as u64,
             #[cfg(linux_x86_64)]
             blocks: s.f_blocks,
             #[cfg(linux_aarch64)]
             blocks: s.f_blocks,
+            #[cfg(linux_arm)]
+            blocks: s.f_blocks as u64,
             #[cfg(target_os = "macos")]
             bfree: s.f_bfree as u64,
             #[cfg(linux_x86_64)]
             bfree: s.f_bfree,
             #[cfg(linux_aarch64)]
             bfree: s.f_bfree,
+            #[cfg(linux_arm)]
+            bfree: s.f_bfree as u64,
             #[cfg(target_os = "macos")]
             bavail: s.f_bavail as u64,
             #[cfg(linux_x86_64)]
             bavail: s.f_bavail,
             #[cfg(linux_aarch64)]
             bavail: s.f_bavail,
+            #[cfg(linux_arm)]
+            bavail: s.f_bavail as u64,
             #[cfg(target_os = "macos")]
             files: s.f_files as u64,
             #[cfg(linux_x86_64)]
             files: s.f_files,
             #[cfg(linux_aarch64)]
             files: s.f_files,
+            #[cfg(linux_arm)]
+            files: s.f_files as u64,
             #[cfg(target_os = "macos")]
             ffree: s.f_ffree as u64,
             #[cfg(linux_x86_64)]
             ffree: s.f_ffree,
             #[cfg(linux_aarch64)]
             ffree: s.f_ffree,
+            #[cfg(linux_arm)]
+            ffree: s.f_ffree as u64,
             #[cfg(target_os = "macos")]
             favail: s.f_favail as u64,
             #[cfg(linux_x86_64)]
             favail: s.f_favail,
             #[cfg(linux_aarch64)]
             favail: s.f_favail,
-            fsid: s.f_fsid,
-            flag: s.f_flag,
-            namemax: s.f_namemax,
+            #[cfg(linux_arm)]
+            favail: s.f_favail as u64,
+            fsid: s.f_fsid as u64,
+            flag: s.f_flag as u64,
+            namemax: s.f_namemax as u64,
         }
     }
 }
@@ -121,12 +133,14 @@ impl From<stat> for SmbStat {
     fn from(s: stat) -> Self {
         Self {
             accessed: time_t_to_system_time(s.st_atime),
-            blocks: s.st_blocks,
+            blocks: s.st_blocks as i64,
             #[cfg(target_os = "macos")]
             blksize: s.st_blksize as i64,
             #[cfg(linux_x86_64)]
             blksize: s.st_blksize,
             #[cfg(linux_aarch64)]
+            blksize: s.st_blksize as i64,
+            #[cfg(linux_arm)]
             blksize: s.st_blksize as i64,
             #[cfg(linux_riscv64)]
             blksize: s.st_blksize as i64,
@@ -136,6 +150,8 @@ impl From<stat> for SmbStat {
             #[cfg(linux_x86_64)]
             dev: s.st_dev as i32,
             #[cfg(linux_aarch64)]
+            dev: s.st_dev as i32,
+            #[cfg(linux_arm)]
             dev: s.st_dev as i32,
             #[cfg(linux_riscv64)]
             dev: s.st_dev as i32,
@@ -148,6 +164,8 @@ impl From<stat> for SmbStat {
             nlink: s.st_nlink,
             #[cfg(linux_aarch64)]
             nlink: s.st_nlink as u64,
+            #[cfg(linux_arm)]
+            nlink: s.st_nlink as u64,
             #[cfg(linux_riscv64)]
             nlink: s.st_nlink as u64,
             #[cfg(target_os = "macos")]
@@ -155,6 +173,8 @@ impl From<stat> for SmbStat {
             #[cfg(linux_x86_64)]
             rdev: s.st_rdev,
             #[cfg(linux_aarch64)]
+            rdev: s.st_rdev as u64,
+            #[cfg(linux_arm)]
             rdev: s.st_rdev as u64,
             #[cfg(linux_riscv64)]
             rdev: s.st_rdev as u64,
@@ -220,7 +240,7 @@ impl TryFrom<libsmb_file_info> for SmbDirentInfo {
         Ok(Self {
             name,
             short_name,
-            size: di.size,
+            size: di.size as u64,
             ctime: time_t_to_system_time(di.ctime_ts.tv_sec),
             btime: time_t_to_system_time(di.btime_ts.tv_sec),
             mtime: time_t_to_system_time(di.mtime_ts.tv_sec),
