@@ -55,6 +55,8 @@ impl From<statvfs> for SmbStatVfs {
             blocks: s.f_blocks,
             #[cfg(linux_arm)]
             blocks: s.f_blocks as u64,
+            #[cfg(linux_riscv64)]
+            blocks: s.f_blocks,
             #[cfg(target_os = "macos")]
             bfree: s.f_bfree as u64,
             #[cfg(linux_x86_64)]
@@ -63,6 +65,8 @@ impl From<statvfs> for SmbStatVfs {
             bfree: s.f_bfree,
             #[cfg(linux_arm)]
             bfree: s.f_bfree as u64,
+            #[cfg(linux_riscv64)]
+            bfree: s.f_bfree,
             #[cfg(target_os = "macos")]
             bavail: s.f_bavail as u64,
             #[cfg(linux_x86_64)]
@@ -71,6 +75,8 @@ impl From<statvfs> for SmbStatVfs {
             bavail: s.f_bavail,
             #[cfg(linux_arm)]
             bavail: s.f_bavail as u64,
+            #[cfg(linux_riscv64)]
+            bavail: s.f_bavail,
             #[cfg(target_os = "macos")]
             files: s.f_files as u64,
             #[cfg(linux_x86_64)]
@@ -79,6 +85,8 @@ impl From<statvfs> for SmbStatVfs {
             files: s.f_files,
             #[cfg(linux_arm)]
             files: s.f_files as u64,
+            #[cfg(linux_riscv64)]
+            files: s.f_files,
             #[cfg(target_os = "macos")]
             ffree: s.f_ffree as u64,
             #[cfg(linux_x86_64)]
@@ -87,6 +95,8 @@ impl From<statvfs> for SmbStatVfs {
             ffree: s.f_ffree,
             #[cfg(linux_arm)]
             ffree: s.f_ffree as u64,
+            #[cfg(linux_riscv64)]
+            ffree: s.f_ffree,
             #[cfg(target_os = "macos")]
             favail: s.f_favail as u64,
             #[cfg(linux_x86_64)]
@@ -95,6 +105,8 @@ impl From<statvfs> for SmbStatVfs {
             favail: s.f_favail,
             #[cfg(linux_arm)]
             favail: s.f_favail as u64,
+            #[cfg(linux_riscv64)]
+            favail: s.f_favail,
             fsid: s.f_fsid as u64,
             flag: s.f_flag as u64,
             namemax: s.f_namemax as u64,
