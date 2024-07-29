@@ -76,6 +76,7 @@
       - [MacOS 🍎](#macos-)
       - [Debian based systems 🐧](#debian-based-systems-)
       - [RedHat based systems 🐧](#redhat-based-systems-)
+      - [OpenBSD 🐡](#openbsd-)
       - [Build from sources 📁](#build-from-sources-)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
@@ -136,6 +137,14 @@ dnf install libsmbclient-devel libsmbclient
 ```
 
 ⚠️ `libsmbclient-devel` is required only on the machine where you build the application
+
+#### OpenBSD 🐡
+
+Install samba with pkg_add:
+
+```sh
+pkg_add samba
+```
 
 #### Build from sources 📁
 
