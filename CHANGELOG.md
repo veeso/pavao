@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.8](#028)
   - [0.2.7](#027)
   - [0.2.6](#026)
   - [0.2.5](#025)
@@ -14,6 +15,10 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.8
+
+- chore(build): improve macOS linking for libsmbclient
 
 ## 0.2.7
 
