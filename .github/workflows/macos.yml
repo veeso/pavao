@@ -7,7 +7,12 @@ env:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest # aka macos-15, arm based runner
+          - macos-13 # intel based runner
 
     steps:
       - uses: actions/checkout@v4
