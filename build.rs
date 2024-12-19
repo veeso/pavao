@@ -7,9 +7,7 @@ fn main() {
         aarch64: { target_arch = "aarch64" },
         riscv64: { target_arch = "riscv64" },
         x86_64: { target_arch = "x86_64" },
-        macos: { target_os = "macos" },
         linux: { target_os = "linux" },
-        unix: { target_family = "unix" },
         // exclusive features
         linux_aarch64: { all(linux, aarch64) },
         linux_riscv64: { all(linux, riscv64) },

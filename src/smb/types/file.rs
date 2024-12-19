@@ -23,7 +23,7 @@ impl<'a> SmbFile<'a> {
     }
 }
 
-impl<'a> Read for SmbFile<'a> {
+impl Read for SmbFile<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         trace!("reading file to buf [{:?};{}]", buf.as_ptr(), buf.len());
         let ctx = self.smbc.ctx().map_err(|_| {
@@ -43,7 +43,7 @@ impl<'a> Read for SmbFile<'a> {
     }
 }
 
-impl<'a> Write for SmbFile<'a> {
+impl Write for SmbFile<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         trace!("writing buf [{:?};{}] to file", buf.as_ptr(), buf.len());
         let ctx = self.smbc.ctx().map_err(|_| {
@@ -68,7 +68,7 @@ impl<'a> Write for SmbFile<'a> {
     }
 }
 
-impl<'a> Seek for SmbFile<'a> {
+impl Seek for SmbFile<'_> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         trace!("seeking file at {:?}", pos);
         let ctx = self.smbc.ctx().map_err(|_| {
@@ -89,7 +89,7 @@ impl<'a> Seek for SmbFile<'a> {
     }
 }
 
-impl<'a> Drop for SmbFile<'a> {
+impl Drop for SmbFile<'_> {
     fn drop(&mut self) {
         trace!("closing file");
         if let Ok(ctx) = self.smbc.ctx() {

@@ -52,6 +52,8 @@ extern crate log;
 mod error;
 mod libsmbclient;
 mod smb;
+#[cfg(test)]
+mod test;
 pub(crate) mod utils;
 
 // -- exports
