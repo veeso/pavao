@@ -1,4 +1,4 @@
-name: MacOS
+name: Test
 
 on: [push, pull_request]
 
@@ -13,10 +13,15 @@ jobs:
         os:
           - macos-latest # aka macos-15, arm based runner
           - macos-13 # intel based runner
+          - ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-      - name: Install dependencies
+      - name: Install dependencies (ubuntu)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
+      - name: Install dependencies (macOS)
+        if: ${{ runner.os == 'macOS' }}
         run: brew update && brew install samba pkg-config && brew link --force samba
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -24,6 +29,11 @@ jobs:
           components: rustfmt, clippy
       - name: Build
         run: cargo build --all-targets
+      - name: Run tests
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo test --no-default-features --no-fail-fast
+        env:
+          RUST_LOG: trace
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
