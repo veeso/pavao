@@ -47,6 +47,8 @@ impl From<statvfs> for SmbStatVfs {
         Self {
             bsize: s.f_bsize as u64,
             frsize: s.f_frsize as u64,
+            #[cfg(target_os = "android")]
+            blocks: s.f_blocks,
             #[cfg(target_os = "macos")]
             blocks: s.f_blocks as u64,
             #[cfg(linux_x86_64)]
@@ -59,6 +61,8 @@ impl From<statvfs> for SmbStatVfs {
             blocks: s.f_blocks,
             #[cfg(target_os = "openbsd")]
             blocks: s.f_blocks,
+            #[cfg(target_os = "android")]
+            bfree: s.f_bfree,
             #[cfg(target_os = "macos")]
             bfree: s.f_bfree as u64,
             #[cfg(linux_x86_64)]
@@ -71,6 +75,8 @@ impl From<statvfs> for SmbStatVfs {
             bfree: s.f_bfree,
             #[cfg(target_os = "openbsd")]
             bfree: s.f_bfree,
+            #[cfg(target_os = "android")]
+            bavail: s.f_bavail,
             #[cfg(target_os = "macos")]
             bavail: s.f_bavail as u64,
             #[cfg(linux_x86_64)]
@@ -83,6 +89,8 @@ impl From<statvfs> for SmbStatVfs {
             bavail: s.f_bavail,
             #[cfg(target_os = "openbsd")]
             bavail: s.f_bavail,
+            #[cfg(target_os = "android")]
+            files: s.f_files,
             #[cfg(target_os = "macos")]
             files: s.f_files as u64,
             #[cfg(linux_x86_64)]
@@ -95,6 +103,8 @@ impl From<statvfs> for SmbStatVfs {
             files: s.f_files,
             #[cfg(target_os = "openbsd")]
             files: s.f_files,
+            #[cfg(target_os = "android")]
+            ffree: s.f_ffree,
             #[cfg(target_os = "macos")]
             ffree: s.f_ffree as u64,
             #[cfg(linux_x86_64)]
@@ -107,6 +117,8 @@ impl From<statvfs> for SmbStatVfs {
             ffree: s.f_ffree,
             #[cfg(target_os = "openbsd")]
             ffree: s.f_ffree,
+            #[cfg(target_os = "android")]
+            favail: s.f_favail,
             #[cfg(target_os = "macos")]
             favail: s.f_favail as u64,
             #[cfg(linux_x86_64)]
@@ -159,6 +171,8 @@ impl From<stat> for SmbStat {
         Self {
             accessed: time_t_to_system_time(s.st_atime),
             blocks: s.st_blocks as i64,
+            #[cfg(target_os = "android")]
+            blksize: s.st_blksize as i64,
             #[cfg(target_os = "macos")]
             blksize: s.st_blksize as i64,
             #[cfg(linux_x86_64)]
@@ -172,6 +186,8 @@ impl From<stat> for SmbStat {
             created: time_t_to_system_time(s.st_ctime),
             #[cfg(target_os = "openbsd")]
             blksize: s.st_blksize as i64,
+            #[cfg(target_os = "android")]
+            dev: s.st_dev as i32,
             #[cfg(target_os = "macos")]
             dev: s.st_dev,
             #[cfg(linux_x86_64)]
@@ -187,6 +203,8 @@ impl From<stat> for SmbStat {
             modified: time_t_to_system_time(s.st_mtime),
             #[cfg(target_os = "openbsd")]
             dev: s.st_dev as i32,
+            #[cfg(target_os = "android")]
+            nlink: s.st_nlink as u64,
             #[cfg(target_os = "macos")]
             nlink: s.st_nlink as u64,
             #[cfg(linux_x86_64)]
@@ -199,6 +217,8 @@ impl From<stat> for SmbStat {
             nlink: s.st_nlink as u64,
             #[cfg(target_os = "openbsd")]
             nlink: s.st_nlink as u64,
+            #[cfg(target_os = "android")]
+            rdev: s.st_rdev as u64,
             #[cfg(target_os = "macos")]
             rdev: s.st_rdev as u64,
             #[cfg(linux_x86_64)]
