@@ -146,6 +146,14 @@ Install samba with pkg_add:
 pkg_add samba
 ```
 
+#### Termux 🤖
+
+Install samba with pkg:
+
+```sh
+pkg install samba
+```
+
 #### Build from sources 📁
 
 Install libsmbclient building from sources:
