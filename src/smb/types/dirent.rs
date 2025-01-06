@@ -158,11 +158,11 @@ mod test {
         dirent.commentlen = 5;
         dirent.name = [0; 1024];
         dirent.namelen = 1;
-        dirent.name[0] = 'h' as i8;
-        dirent.name[1] = 'e' as i8;
-        dirent.name[2] = 'l' as i8;
-        dirent.name[3] = 'l' as i8;
-        dirent.name[4] = 'o' as i8;
+        dirent.name[0] = 'h' as libc::c_char;
+        dirent.name[1] = 'e' as libc::c_char;
+        dirent.name[2] = 'l' as libc::c_char;
+        dirent.name[3] = 'l' as libc::c_char;
+        dirent.name[4] = 'o' as libc::c_char;
         let dirent = SmbDirent::try_from(dirent).unwrap();
         assert_eq!(dirent.get_type(), SmbDirentType::File);
         assert_eq!(dirent.name(), "hello");

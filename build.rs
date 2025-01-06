@@ -3,8 +3,9 @@ use cfg_aliases::cfg_aliases;
 fn main() {
     cfg_aliases! {
         // Platforms
-        arm: { target_arch = "arm" },
         aarch64: { target_arch = "aarch64" },
+        android: { target_arch = "android" },
+        arm: { target_arch = "arm" },
         riscv64: { target_arch = "riscv64" },
         x86_64: { target_arch = "x86_64" },
         linux: { target_os = "linux" },
