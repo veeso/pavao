@@ -13,7 +13,7 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.2.8 (19/12/2024)</p>
+<p align="center">Current version: 0.2.9 (06/01/2025)</p>
 
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
@@ -77,6 +77,7 @@
       - [Debian based systems 🐧](#debian-based-systems-)
       - [RedHat based systems 🐧](#redhat-based-systems-)
       - [OpenBSD 🐡](#openbsd-)
+      - [Termux 🤖](#termux-)
       - [Build from sources 📁](#build-from-sources-)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
