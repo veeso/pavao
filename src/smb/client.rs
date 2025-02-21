@@ -64,9 +64,9 @@ impl SmbClient {
         // insert credentials
         trace!("creating context...");
         // get current context
-        let is_ctx_null = SMBCTX.lock().map_err(|_| SmbError::Mutex)?.is_null();
+        let mut ctx_lock = SMBCTX.lock().map_err(|_| SmbError::Mutex)?;
         // if context is null, create a new one
-        if is_ctx_null {
+        if ctx_lock.is_null() {
             unsafe {
                 let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
                 // set options
@@ -83,7 +83,7 @@ impl SmbClient {
                     .insert(Self::auth_service_uuid(smb_ctx), credentials);
 
                 // set context
-                SMBCTX.lock().map_err(|_| SmbError::Mutex)?.set(smb_ctx);
+                ctx_lock.set(smb_ctx);
             }
         }
         Ok(smbc)
