@@ -1,6 +1,6 @@
 [package]
 name = "pavao"
-version = "0.2.9"
+version = "0.2.10"
 authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
 edition = "2021"
 rust-version = "1.78.0"

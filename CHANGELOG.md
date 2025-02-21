@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.10](#0210)
   - [0.2.9](#029)
   - [0.2.8](#028)
   - [0.2.7](#027)
@@ -16,6 +17,12 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.10
+
+Released on 21/02/2025
+
+- fix: race condition in `SmbClient::new` [PR29](https://github.com/veeso/pavao/pull/29)
 
 ## 0.2.9
 
