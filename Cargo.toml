@@ -1,5 +1,5 @@
 [workspace]
-members = ["pavao", "pavao-sys"]
+members = ["pavao", "pavao-src", "pavao-sys"]
 resolver = "2"
 
 [workspace.package]
