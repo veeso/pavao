@@ -50,6 +50,7 @@ cfg_aliases = "0.2"
 [features]
 debug = []
 no-log = ["log/max_level_off"]
+vendored = ["pavao-sys/vendored"]
 
 [[example]]
 name = "transfer"

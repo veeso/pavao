@@ -3,6 +3,21 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
+const SRC_FILES: &[&str] = &[
+    "libsmb_cache.c",
+    "libsmb_compat.c",
+    "libsmb_context.c",
+    "libsmb_dir.c",
+    "libsmb_file.c",
+    "libsmb_misc.c",
+    "libsmb_path.c",
+    "libsmb_printjob.c",
+    "libsmb_server.c",
+    "libsmb_stat.c",
+    "libsmb_xattr.c",
+    "libsmb_setget.c",
+];
+
 /// Artifacts produced by the build process.
 pub struct Artifacts {
     pub lib_dir: PathBuf,
@@ -121,6 +136,7 @@ impl Build {
         configure.arg("--without-systemd");
         configure.arg("--without-ldb-lmdb");
         configure.arg("--without-ad-dc");
+        configure.arg("--bundled-libraries=ALL");
         configure.env("CC", cc_env);
         configure.env("AR", ar.get_program());
 
@@ -167,8 +183,6 @@ impl Build {
                 skip_next = false;
                 continue;
             }
-
-            configure.arg(arg);
         }
 
         if os.contains("iossimulator") {
@@ -201,25 +215,39 @@ impl Build {
         self.run_command(build, "building samba")?;
 
         // build static library -> bin/default/source3/libsmb
-        let lib_dir = inner_dir
-            .join("bin")
-            .join("default")
-            .join("source3")
-            .join("libsmb");
+        let lib_dir = inner_dir.join("bin").join("default");
 
         let mut build_static = cc.get_archiver();
         build_static.arg("rcs");
         build_static.arg("libsmbclient.a");
         build_static.current_dir(&lib_dir);
 
+        let smbclient_build_dir = lib_dir.join("source3").join("libsmb");
+
         // get object files
-        for entry in fs::read_dir(&lib_dir).map_err(|e| format!("{}: {e}", lib_dir.display()))? {
+        for entry in
+            fs::read_dir(&smbclient_build_dir).map_err(|e| format!("{}: {e}", lib_dir.display()))?
+        {
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "o") {
+
+            // if not .o file, skip
+            if path.extension().map_or(false, |e| e != "o") {
+                continue;
+            }
+
+            let file_name = path
+                .file_name()
+                .ok_or("file_name")?
+                .to_string_lossy()
+                .to_string();
+            if SRC_FILES.iter().any(|&f| file_name.contains(f)) {
                 build_static.arg(path);
             }
         }
+
+        // push talloc
+        build_static.arg(lib_dir.join("lib").join("talloc").join("talloc.c.1.o"));
 
         // run ar
         self.run_command(build_static, "building static library")?;

@@ -1,4 +1,16 @@
 fn main() {
+    #[cfg(feature = "vendored")]
+    {
+        build_vendored();
+    }
+    #[cfg(not(feature = "vendored"))]
+    {
+        build_normal();
+    }
+}
+
+#[allow(dead_code)]
+fn build_normal() {
     match pkg_config::find_library("smbclient") {
         Ok(_) => {
             if cfg!(target_os = "macos") {
@@ -20,4 +32,36 @@ fn main() {
             panic!("{}", e);
         }
     };
+}
+
+#[cfg(feature = "vendored")]
+fn build_vendored() {
+    let mut build = pavao_src::Build::new();
+
+    let artifacts = build.build();
+    println!("cargo:vendored=1");
+    println!(
+        "cargo:root={}",
+        artifacts.lib_dir.parent().unwrap().display()
+    );
+
+    if !artifacts.lib_dir.exists() {
+        panic!(
+            "samba library does not exist: {}",
+            artifacts.lib_dir.display()
+        );
+    }
+    if !artifacts.include_dir.exists() {
+        panic!(
+            "samba include directory does not exist: {}",
+            artifacts.include_dir.display()
+        );
+    }
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        artifacts.lib_dir.display()
+    );
+    println!("cargo:include={}", artifacts.include_dir.display());
+    println!("cargo:rustc-link-lib=static=smbclient");
 }
