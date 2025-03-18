@@ -3,8 +3,8 @@
 //! module which exposes the smb dir entry
 
 use libc::c_uint;
+use pavao_sys::smbc_dirent;
 
-use crate::libsmbclient::smbc_dirent;
 use crate::utils::char_ptr_to_string;
 use crate::SmbError;
 

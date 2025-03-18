@@ -1,5 +1,5 @@
 [workspace]
-members = ["pavao"]
+members = ["pavao", "pavao-sys"]
 resolver = "2"
 
 [workspace.package]
@@ -10,4 +10,3 @@ authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
 repository = "https://github.com/veeso/pavao"
 license = "GPL-3.0"
 keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]
-categories = ["network-programming"]

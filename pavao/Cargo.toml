@@ -4,7 +4,7 @@ version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
-categories = { workspace = true }
+categories = ["network-programming"]
 description = "Rust client library for SMB 2/3 based on libsmbclient."
 documentation = "https://docs.rs/pavao"
 homepage = "https://github.com/veeso/pavao"
@@ -18,12 +18,9 @@ include = [
 ]
 keywords = { workspace = true }
 license = { workspace = true }
-readme = "README.md"
+readme = "../README.md"
 repository = { workspace = true }
-
-# C build
 build = "build.rs"
-links = "smbclient"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
@@ -34,6 +31,7 @@ path = "src/lib.rs"
 lazy_static = "^1"
 libc = "^0.2"
 log = "^0.4"
+pavao-sys = { version = "0.2", path = "../pavao-sys" }
 thiserror = "^2"
 
 [dev-dependencies]
@@ -48,7 +46,6 @@ testcontainers = { version = "0.23", default-features = false, features = [
 
 [build-dependencies]
 cfg_aliases = "0.2"
-pkg-config = "0.3"
 
 [features]
 debug = []

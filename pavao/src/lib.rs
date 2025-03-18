@@ -50,7 +50,6 @@ extern crate log;
 
 // -- mod
 mod error;
-mod libsmbclient;
 mod smb;
 #[cfg(test)]
 mod test;

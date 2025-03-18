@@ -6,9 +6,9 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use libc::{stat, statvfs, time_t};
+use pavao_sys::libsmb_file_info;
 
 use super::SmbMode;
-use crate::libsmbclient::libsmb_file_info;
 use crate::utils::char_ptr_to_string;
 use crate::{SmbDirentType, SmbError};
 

@@ -1,0 +1,36 @@
+[package]
+name = "pavao-sys"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+categories = ["external-ffi-bindings", "network-programming"]
+description = "ffi bindings for libsmbclient. Use Pavao to access Samba shares from Rust."
+documentation = "https://docs.rs/pavao-sys"
+homepage = "https://github.com/veeso/pavao"
+include = [
+  "src/**/*",
+  "build.rs",
+  "../LICENSE",
+  "../README.md",
+  "../CHANGELOG.md",
+]
+keywords = { workspace = true }
+license = { workspace = true }
+readme = "../README.md"
+repository = { workspace = true }
+
+# C build
+build = "build.rs"
+links = "smbclient"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "pavao_sys"
+path = "src/lib.rs"
+
+[dependencies]
+libc = "^0.2"
+
+[build-dependencies]
+pkg-config = "0.3"
