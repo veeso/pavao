@@ -1,60 +1,13 @@
-[package]
-name = "pavao"
+[workspace]
+members = ["pavao"]
+resolver = "2"
+
+[workspace.package]
 version = "0.2.10"
-authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
 edition = "2021"
 rust-version = "1.78.0"
-categories = ["network-programming"]
-description = "Rust client library for SMB 2/3 based on libsmbclient."
-documentation = "https://docs.rs/pavao"
-homepage = "https://github.com/veeso/pavao"
-include = ["src/**/*", "build.rs", "LICENSE", "README.md", "CHANGELOG.md"]
-keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]
-license = "GPL-3.0"
-readme = "README.md"
+authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
 repository = "https://github.com/veeso/pavao"
-
-# C build
-build = "build.rs"
-links = "smbclient"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "pavao"
-path = "src/lib.rs"
-
-[dependencies]
-lazy_static = "^1.4"
-libc = "^0.2.121"
-log = "^0.4"
-thiserror = "^2"
-
-[dev-dependencies]
-argh = "0.1"
-env_logger = "0.11"
-pretty_assertions = "1"
-rpassword = "7"
-serial_test = "3"
-testcontainers = { version = "0.23", default-features = false, features = [
-  "blocking",
-] }
-
-[build-dependencies]
-cfg_aliases = "0.2"
-pkg-config = "0.3"
-
-[features]
-debug = []
-no-log = ["log/max_level_off"]
-
-[[example]]
-name = "transfer"
-path = "examples/transfer.rs"
-
-[[example]]
-name = "tree"
-path = "examples/tree.rs"
-
-[[example]]
-name = "treeplus"
-path = "examples/treeplus.rs"
+license = "GPL-3.0"
+keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]
+categories = ["network-programming"]
