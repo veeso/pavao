@@ -1,3 +1,15 @@
+//! # Pavão-sys
+//!
+//! [Pavão=sys](https://github.com/veeso/pavao) exposes the C bindings for the **libsmbclient** library to rust.
+//!
+//! If you're looking for the Rust SMB library checkout pavao.
+//!
+
+#![doc(html_playground_url = "https://play.rust-lang.org")]
+#![doc(
+    html_favicon_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/pavao.png"
+)]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/veeso/pavao/main/docs/images/pavao.png")]
 #![allow(non_camel_case_types)]
 #![allow(clippy::upper_case_acronyms)]
 use std::{clone, default, mem, option};
@@ -427,7 +439,6 @@ impl default::Default for _smbc_options {
 
 #[link(name = "smbclient")]
 extern "C" {
-    #[cfg(feature = "debug")]
     pub fn smbc_setDebug(c: *mut SMBCCTX, debug: c_int);
     pub fn smbc_getNetbiosName(c: *mut SMBCCTX) -> *mut c_char;
     pub fn smbc_setNetbiosName(c: *mut SMBCCTX, netbios_name: *mut c_char);

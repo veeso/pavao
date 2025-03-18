@@ -7,12 +7,12 @@ use std::time::Duration;
 use std::{mem, ptr};
 
 use libc::{self, c_char, c_int};
+use pavao_sys::{SMBCCTX, *};
 
 use super::{
     AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
     SmbStat, SmbStatVfs,
 };
-use crate::libsmbclient::{SMBCCTX, *};
 use crate::{utils, SmbDirent, SmbError, SmbResult};
 
 struct SmbContext {
