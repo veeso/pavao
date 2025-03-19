@@ -36,12 +36,8 @@ jobs:
           libldap2-dev \
           zlib1g-dev \
           libpam0g-dev \
-          libdm0-dev \
-          dmapi \
-          libdm0-dev \
           libacl1-dev \
           libarchive-dev \
-          libfam-dev \
           flex \
           bison \
           libntirpc-dev \
