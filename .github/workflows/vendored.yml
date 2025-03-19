@@ -11,8 +11,8 @@ jobs:
     strategy:
       matrix:
         os:
-          # - macos-latest # aka macos-15, arm based runner
-          # - macos-13 # intel based runner
+          - macos-latest # aka macos-15, arm based runner
+          - macos-13 # intel based runner
           - ubuntu-latest
 
     steps:
