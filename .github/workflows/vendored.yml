@@ -24,7 +24,7 @@ jobs:
         run: sudo apt update && sudo apt install -y make build-essential pkg-config libbsd-dev libcap-dev libcups2-dev libgnutls28-dev libicu-dev libjansson-dev libkeyutils-dev libldap2-dev zlib1g-dev
       - name: Install dependencies (macOS)
         if: ${{ runner.os == 'macOS' }}
-        run: brew update && brew install pkg-config libbsd icu4c jansson keyutils gnutls zlib openldap cups && brew link --force icu4c
+        run: brew update && brew install pkg-config libbsd icu4c jansson gnutls zlib openldap cups && brew link --force icu4c
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

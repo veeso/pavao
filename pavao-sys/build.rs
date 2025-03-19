@@ -75,8 +75,12 @@ fn build_vendored() {
     println!("cargo:rustc-link-lib=icui18n");
     println!("cargo:rustc-link-lib=icuuc");
     println!("cargo:rustc-link-lib=gnutls");
-    println!("cargo:rustc-link-lib=cap");
     println!("cargo:rustc-link-lib=bsd");
     println!("cargo:rustc-link-lib=resolv");
-    println!("cargo:rustc-link-lib=keyutils");
+
+    // linux only
+    if cfg!(target_os = "linux") {
+        println!("cargo:rustc-link-lib=cap");
+        println!("cargo:rustc-link-lib=keyutils");
+    }
 }
