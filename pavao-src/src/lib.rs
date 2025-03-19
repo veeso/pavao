@@ -1469,6 +1469,8 @@ impl Build {
         configure.arg("--bundled-libraries=ALL");
         #[cfg(target_os = "macos")]
         configure.arg("--without-libarchive");
+        #[cfg(target_os = "macos")]
+        configure.arg("--without-acl-support"); // not supported on mac
         configure.env("CC", cc_env);
         configure.env("AR", ar.get_program());
 
