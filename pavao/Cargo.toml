@@ -12,9 +12,10 @@ include = [
   "src/**/*",
   "examples/**/*",
   "build.rs",
-  "LICENSE",
-  "README.md",
-  "CHANGELOG.md",
+  "../docs/**/*",
+  "../LICENSE",
+  "../README.md",
+  "../CHANGELOG.md",
 ]
 keywords = { workspace = true }
 license = { workspace = true }

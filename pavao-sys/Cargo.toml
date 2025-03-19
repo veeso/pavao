@@ -11,6 +11,7 @@ homepage = "https://github.com/veeso/pavao"
 include = [
   "src/**/*",
   "build.rs",
+  "../docs/**/*",
   "../LICENSE",
   "../README.md",
   "../CHANGELOG.md",

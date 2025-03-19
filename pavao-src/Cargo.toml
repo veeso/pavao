@@ -12,6 +12,7 @@ include = [
   "samba/**/*",
   "src/**/*",
   "build.rs",
+  "../docs/**/*",
   "../LICENSE",
   "../README.md",
   "../CHANGELOG.md",
