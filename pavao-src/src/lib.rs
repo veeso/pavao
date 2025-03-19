@@ -128,7 +128,6 @@ impl Build {
         configure.arg("--without-systemd");
         configure.arg("--without-ldb-lmdb");
         configure.arg("--without-ad-dc");
-        configure.arg("--bundled-libraries=ALL");
         configure.env("CC", cc_env);
         configure.env("AR", ar.get_program());
 
