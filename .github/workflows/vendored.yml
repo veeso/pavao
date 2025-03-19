@@ -62,7 +62,7 @@ jobs:
           libarchive \
           flex \
           bison \
-          libntirpc \
+          libtirpc \
           cups
           brew link --force icu4c
           cpanm Parse::Yapp::Driver
