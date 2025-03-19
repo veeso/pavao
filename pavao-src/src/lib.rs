@@ -1467,7 +1467,6 @@ impl Build {
         configure.arg("--without-ldb-lmdb");
         configure.arg("--without-ad-dc");
         configure.arg("--bundled-libraries=ALL");
-        #[cfg(target_os = "macos")]
         configure.arg("--without-libarchive");
         #[cfg(target_os = "macos")]
         configure.arg("--without-acl-support"); // not supported on mac
