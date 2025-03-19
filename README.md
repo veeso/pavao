@@ -94,7 +94,9 @@
 
 Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which exposes type-safe functions to interact with the C libsmbclient.
 
-![pavao_gif](./docs/images//pavao.gif)
+<p align="center">
+  <img src="docs/images/pavao.gif" alt="pavao gif" width="auto" height="150" />
+</p>
 
 ### SMB Rust client for Windows
 
