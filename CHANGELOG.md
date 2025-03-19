@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.12](#0212)
   - [0.2.11](#0211)
   - [0.2.10](#0210)
   - [0.2.9](#029)
@@ -18,6 +19,13 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.12
+
+Released on 19/03/2025
+
+- Added `pavao-src` crate with samba source code to build smbclient
+- Added `vendored` feature to use vendored samba source code
 
 ## 0.2.11
 

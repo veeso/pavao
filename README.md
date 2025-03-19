@@ -13,7 +13,7 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.me/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.2.11 (19/03/2025)</p>
+<p align="center">Current version: 0.2.12 (19/03/2025)</p>
 
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
@@ -79,9 +79,9 @@
       - [OpenBSD 🐡](#openbsd-)
       - [Termux 🤖](#termux-)
       - [Build from sources 📁](#build-from-sources-)
+  - [Vendored libsmbclient](#vendored-libsmbclient)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
-  - [Vendored libsmbclient](#vendored-libsmbclient)
   - [Documentation 📚](#documentation-)
   - [Support the developer ☕](#support-the-developer-)
   - [Contributing and issues 🤝🏻](#contributing-and-issues-)
@@ -175,6 +175,38 @@ cd ..
 rm -rf samba/
 ```
 
+---
+
+## Vendored libsmbclient
+
+It is possible to build libsmbclient **statically** when building **pavao**.
+
+To do so it is enough to enable the `vendored` feature for the `pavao` crate in your `Cargo.toml`:
+
+```toml
+pavao = { version = "0.2", features = ["vendored"] }
+```
+
+> [!CAUTION]
+> Mind that libsmbclient is a bloated library with tons of dependencies, so the vendored feature will increase the size of the final binary and may not work on all platforms.
+
+In order to build and run with the `vendored` feature YOU MUST have the following libraries in your LD_LIBRARY_PATH:
+
+- bsd
+- cap
+- cups
+- gnutls
+- icui18n
+- icuuc
+- jansson
+- keyutils
+- lber
+- ldap
+- resolv
+- z
+
+---
+
 ### Create a pavao application
 
 ```rust
@@ -215,18 +247,6 @@ while the `transfer` example shows how to write a file to the remote host and ca
 ```sh
 cargo run --example transfer -- -i <file_on_local> -o <file_to_write> -u <username> -w <workspace> -s <share> -P <password> smb://<hostname>
 ```
-
----
-
-## Vendored libsmbclient
-
-Well, I tried <https://github.com/veeso/pavao/issues/20#issuecomment-2736361603>.
-
-If you want you can try yourself if you're a wizard of C or a masochist.
-
-> TL;DR
-> libsmbclient can't be built statically, because it's a mess. No static no vendor.  
-> There could also be a chance in embedding the .so and using libloading to load it at runtime, but I have no idea how to do that.
 
 ---
 

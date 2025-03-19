@@ -1,0 +1,33 @@
+name: Vendored
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest # aka macos-15, arm based runner
+          - macos-13 # intel based runner
+          - ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies (ubuntu)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt update && sudo apt install -y make build-essential pkg-config libbsd-dev libcap-dev libcups2-dev libgnutls28-dev libicu-dev libjansson-dev libkeyutils-dev libldap2-dev zlib1g-dev
+      - name: Install dependencies (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: brew update && brew install pkg-config libbsd icu4c jansson keyutils gnutls zlib openldap cups && brew link --force icu4c
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt, clippy
+      - name: Build
+        run: cargo build --example transfer --features vendored
