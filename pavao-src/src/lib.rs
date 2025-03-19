@@ -1,205 +1,13 @@
-use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
-const LIBSMBCLIENT_SRC_FILES: &[&str] = &[
-    "libsmb_cache.c",
-    "libsmb_compat.c",
-    "libsmb_context.c",
-    "libsmb_dir.c",
-    "libsmb_file.c",
-    "libsmb_misc.c",
-    "libsmb_path.c",
-    "libsmb_printjob.c",
-    "libsmb_server.c",
-    "libsmb_stat.c",
-    "libsmb_xattr.c",
-    "libsmb_setget.c",
-];
-
-const LIBSMB_SRC_FILES: &[&str] = &[
-    "clientgen.c",
-    "clifile.c",
-    "clirap.c",
-    "clierror.c",
-    "climessage.c",
-    "clireadwrite.c",
-    "clilist.c",
-    "cliprint.c",
-    "clitrans.c",
-    "clisecdesc.c",
-    "cliquota.c",
-    "clifsinfo.c",
-    "clidfs.c",
-    "clioplock.c",
-    "async_smb.c",
-    "clisymlink.c",
-    "smbsock_connect.c",
-    "cli_smb2_fnum.c",
-];
-
-const RPC_CLIENT_SRC_FILES: &[&str] = &[
-    "cli_lsarpc.c",
-    "init_lsa.c",
-    "cli_pipe.c",
-    "rpc_transport_np.c",
-    "rpc_transport_sock.c",
-    "rpc_transport_tstream.c",
-    "local_np.c",
-];
-
-const LIBGENNDR_SRC_FILES: &[&str] = &["ndr_lsa_c.c"];
-
-const SMBCONF_SRC_FILES: &[&str] = &["smbconf_init.c", "smbconf_reg.c"];
-
-const LIBSMBCONF_SRC_FILES: &[&str] = &["smbconf.c", "smbconf_txt.c", "smbconf_util.c"];
-
-const TALLOC_SRC_FILES: &[&str] = &["talloc.c"];
-
-const SAMBA_UTILS_SRC_FILES: &[&str] = &[
-    "base64.c",
-    "dprintf.c",
-    "dns_cmp.c",
-    "fsusage.c",
-    "genrand_util.c",
-    "getpass.c",
-    "idtree_random.c",
-    "memcache.c",
-    "params.c",
-    "rbtree.c",
-    "rfc1738.c",
-    "server_id.c",
-    "smb_threads.c",
-    "system.c",
-    "talloc_keep_secret.c",
-    "talloc_stack.c",
-    "tevent_debug.c",
-    "tfork.c",
-    "tftw.c",
-    "unix_match.c",
-    "util_id.c",
-    "util_net.c",
-    "util_paths.c",
-    "util_str.c",
-    "util_str_common.c",
-    "util_strlist_v3.c",
-    "util_str_hex.c",
-    "stable_sort.c",
-];
-
-const GNUTLS_HELPERS_SRC_FILES: &[&str] = &[
-    "gnutls_error.c",
-    "gnutls_aead_aes_256_cbc_hmac_sha512.c",
-    "gnutls_arcfour_confounded_md5.c",
-    "gnutls_weak_crypto.c",
-    "gnutls_sp800_108.c",
-];
-
-const SAMBA_ERROR_SRC_FILES: &[&str] = &[
-    "doserr.c",
-    "errormap.c",
-    "nterr.c",
-    "errmap_unix.c",
-    "hresult.c",
-];
-
-const LIBRPC_RPC_SRC_FILES: &[&str] = &["dcerpc_helpers.c"];
-
-const NDR_SRC_FILES: &[&str] = &[
-    "ndr_string.c",
-    "ndr_basic.c",
-    "uuid.c",
-    "ndr.c",
-    "ndr_misc.c",
-    "util.c",
-    "ndr_sec_helper.c",
-    "ndr_netlogon.c",
-    "ndr_svcctl.c",
-    "ndr_dns.c",
-    "ndr_dns_utils.c",
-    "ndr_dnsp.c",
-];
-
-const GEN_NDR_SRC_FILES: &[&str] = &[
-    "ndr_misc.c",
-    "ndr_security.c",
-    "ndr_lsa.c",
-    "ndr_samr.c",
-    "ndr_netlogon.c",
-    "ndr_eventlog.c",
-    "ndr_eventlog6.c",
-    "ndr_dfs.c",
-    "ndr_ntsvcs.c",
-    "ndr_svcctl.c",
-    "ndr_initshutdown.c",
-    "ndr_wkssvc.c",
-    "ndr_srvsvc.c",
-    "ndr_winreg.c",
-    "ndr_echo.c",
-    "ndr_dns.c",
-    "ndr_dnsp.c",
-    "ndr_atsvc.c",
-    "ndr_spoolss.c",
-    "ndr_dssetup.c",
-    "ndr_server_id.c",
-    "ndr_notify.c",
-    "ndr_conditional_ace.c",
-];
-
-const SAMBA_SECURITY_SRC_FILES: &[&str] = &[
-    "dom_sid.c",
-    "display_sec.c",
-    "secace.c",
-    "secacl.c",
-    "security_descriptor.c",
-    "sddl.c",
-    "privileges.c",
-    "security_token.c",
-    "access_check.c",
-    "object_tree.c",
-    "create_descriptor.c",
-    "util_sid.c",
-    "session.c",
-    "secdesc.c",
-    "conditional_ace.c",
-    "sddl_conditional_ace.c",
-    "claims-conversions.c",
-];
-
-const UTIL_CHARSET_SRC_FILES: &[&str] = &[
-    "weird.c",
-    "charset_macosxfs.c",
-    "iconv.c",
-    "util_str.c",
-    "util_unistr.c",
-    "util_unistr_w.c",
-    "pull_push.c",
-    "convert_string.c",
-    "codepoints.c",
-];
-
-const AUTH_SRC_FILES: &[&str] = &[
-    "cliauth.empty.c",
-    "msrpc_parse.c",
-    "smbdes.c",
-    "ntlm_check.c",
-    "pam_errors.c",
-    "session.c",
-    "schannel_state_tdb.c",
-    "smbencrypt.c",
-    "credentials.c",
-    "spnego_parse.c",
-    "netlogon_creds_cli.c",
-];
-
-const LIBCLI_SMB_SRC_FILES: &[&str] = &["smbXcli_base.c.4"];
-
 /// Artifacts produced by the build process.
 pub struct Artifacts {
     pub lib_dir: PathBuf,
     pub include_dir: PathBuf,
+    pub libsmbclient: PathBuf,
 }
 
 /// Source dir
@@ -218,6 +26,12 @@ pub struct Build {
     target: Option<String>,
     host: Option<String>,
     samba_dir: Option<PathBuf>,
+}
+
+impl Default for Build {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Build {
@@ -336,11 +150,9 @@ impl Build {
             // cc includes an `-arch` flag for Apple platforms, but we've
             // already selected an arch implicitly via the target above, and
             // OpenSSL contains about the conflict if both are specified.
-            if target.contains("apple") {
-                if arg == "-arch" {
-                    skip_next = true;
-                    continue;
-                }
+            if target.contains("apple") && arg == "-arch" {
+                skip_next = true;
+                continue;
             }
 
             // cargo-lipo specifies this but OpenSSL complains
@@ -367,7 +179,7 @@ impl Build {
             if let Some(ref isysr) = ios_isysroot {
                 configure.env(
                     "CC",
-                    &format!(
+                    format!(
                         "xcrun -sdk iphonesimulator cc -isysroot {}",
                         Path::new(isysr).display()
                     ),
@@ -392,124 +204,15 @@ impl Build {
         }
         self.run_command(build, "building samba")?;
 
-        // build static library -> bin/default/source3/libsmb
-        let lib_dir = inner_dir.join("bin").join("default");
+        // built shared library -> bin/default/source3/libsmb
+        let lib_dir = inner_dir
+            .join("bin")
+            .join("default")
+            .join("source3")
+            .join("libsmb");
 
-        let mut build_static = cc.get_archiver();
-        build_static.arg("rcs");
-        build_static.arg("libsmbclient.a");
-        build_static.current_dir(&lib_dir);
-
-        // get object files for smbclient
-        let smbclient_build_dir = lib_dir.join("source3").join("libsmb");
-        Self::find_objects(
-            &mut build_static,
-            &smbclient_build_dir,
-            LIBSMBCLIENT_SRC_FILES,
-        )?;
-
-        // get object files for smb
-        let smb_build_dir = lib_dir.join("source3").join("libsmb");
-        Self::find_objects(&mut build_static, &smb_build_dir, LIBSMB_SRC_FILES)?;
-
-        // smbconf
-        let smbconf_build_dir = lib_dir.join("source3").join("lib").join("smbconf");
-        Self::find_objects(&mut build_static, &smbconf_build_dir, SMBCONF_SRC_FILES)?;
-
-        // libsmbconf
-        let libsmbconf_build_dir = lib_dir.join("lib").join("smbconf");
-        Self::find_objects(
-            &mut build_static,
-            &libsmbconf_build_dir,
-            LIBSMBCONF_SRC_FILES,
-        )?;
-
-        // push talloc
-        let talloc_build_dir = lib_dir.join("lib").join("talloc");
-        Self::find_objects(&mut build_static, &talloc_build_dir, TALLOC_SRC_FILES)?;
-
-        // push libcli_lsarpc
-        let libcli_lsarpc_build_dir = lib_dir.join("source3").join("rpc_client");
-        Self::find_objects(
-            &mut build_static,
-            &libcli_lsarpc_build_dir,
-            RPC_CLIENT_SRC_FILES,
-        )?;
-
-        // push libndr_lsa_c
-        let libndr_lsa_c_build_dir = lib_dir.join("librpc").join("gen_ndr");
-        Self::find_objects(
-            &mut build_static,
-            &libndr_lsa_c_build_dir,
-            LIBGENNDR_SRC_FILES,
-        )?;
-
-        // push utils
-        let samba_utils_build_dir = lib_dir.join("lib").join("util");
-        Self::find_objects(
-            &mut build_static,
-            &samba_utils_build_dir,
-            SAMBA_UTILS_SRC_FILES,
-        )?;
-
-        // push gnutls_helpers
-        let gnutls_helpers_build_dir = lib_dir.join("lib").join("crypto");
-        Self::find_objects(
-            &mut build_static,
-            &gnutls_helpers_build_dir,
-            GNUTLS_HELPERS_SRC_FILES,
-        )?;
-
-        // samba error
-        let samba_error_build_dir = lib_dir.join("libcli").join("util");
-        Self::find_objects(
-            &mut build_static,
-            &samba_error_build_dir,
-            SAMBA_ERROR_SRC_FILES,
-        )?;
-
-        // librpc_rpc
-        let librpc_rpc_build_dir = lib_dir.join("source3").join("librpc").join("rpc");
-        Self::find_objects(
-            &mut build_static,
-            &librpc_rpc_build_dir,
-            LIBRPC_RPC_SRC_FILES,
-        )?;
-
-        // ndr
-        let ndr_build_dir = lib_dir.join("librpc").join("ndr");
-        Self::find_objects(&mut build_static, &ndr_build_dir, NDR_SRC_FILES)?;
-
-        // ndr gen
-        let gen_ndr_build_dir = lib_dir.join("librpc").join("gen_ndr");
-        Self::find_objects(&mut build_static, &gen_ndr_build_dir, GEN_NDR_SRC_FILES)?;
-
-        // samba security
-        let samba_security_build_dir = lib_dir.join("libcli").join("security");
-        Self::find_objects(
-            &mut build_static,
-            &samba_security_build_dir,
-            SAMBA_SECURITY_SRC_FILES,
-        )?;
-
-        // charset
-        let charset_build_dir = lib_dir.join("lib").join("util").join("charset");
-        Self::find_objects(
-            &mut build_static,
-            &charset_build_dir,
-            UTIL_CHARSET_SRC_FILES,
-        )?;
-
-        // auth
-        let auth_build_dir = lib_dir.join("libcli").join("auth");
-        Self::find_objects(&mut build_static, &auth_build_dir, AUTH_SRC_FILES)?;
-
-        // libcli smb
-        let libcli_smb = lib_dir.join("libcli").join("smb");
-        Self::find_objects(&mut build_static, &libcli_smb, LIBCLI_SMB_SRC_FILES)?;
-
-        // run ar
-        self.run_command(build_static, "building static library")?;
+        // built shared library -> bin/default/source3/libsmb/libsmbclient.so
+        let libsmbclient = lib_dir.join("libsmbclient.so");
 
         // include_dir -> bin/default/include/public/
         let include_dir = inner_dir
@@ -521,61 +224,8 @@ impl Build {
         Ok(Artifacts {
             lib_dir,
             include_dir,
+            libsmbclient,
         })
-    }
-
-    /// Find objects starting with `files` in `path` and add them to `command`.
-    fn find_objects(command: &mut Command, path: &Path, files: &[&str]) -> Result<(), String> {
-        let mut count = 0;
-        let mut files_to_find = HashSet::with_capacity(files.len());
-        for f in files {
-            files_to_find.insert(f.to_string());
-        }
-
-        for entry in fs::read_dir(&path).map_err(|e| format!("{}: {e}", path.display()))? {
-            let entry = entry.map_err(|e| e.to_string())?;
-            let path = entry.path();
-
-            // if not .o file, skip
-            if path.extension().map_or(false, |e| e != "o") {
-                continue;
-            }
-
-            let file_name = path
-                .file_name()
-                .ok_or("file_name")?
-                .to_string_lossy()
-                .to_string();
-
-            let mut n = None;
-            for f in &files_to_find {
-                if file_name.contains(f) {
-                    command.arg(path);
-                    count += 1;
-                    n = Some(f.clone());
-                    break;
-                }
-            }
-            if let Some(f) = n {
-                files_to_find.remove(&f);
-            }
-
-            if files_to_find.is_empty() {
-                break;
-            }
-        }
-
-        if count != files.len() {
-            return Err(format!(
-                "expected to find {} object files in {}, but found {}. Files not found: {:?}",
-                files.len(),
-                path.display(),
-                count,
-                files_to_find
-            ));
-        }
-
-        Ok(())
     }
 
     #[track_caller]

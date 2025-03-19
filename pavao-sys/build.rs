@@ -63,5 +63,5 @@ fn build_vendored() {
         artifacts.lib_dir.display()
     );
     println!("cargo:include={}", artifacts.include_dir.display());
-    println!("cargo:rustc-link-lib=static=smbclient");
+    println!("cargo:rustc-link-lib=dylib=smbclient");
 }
