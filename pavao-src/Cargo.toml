@@ -9,6 +9,7 @@ description = "Source of libsmbclient and logic to build vendored pavao."
 documentation = "https://docs.rs/pavao-src"
 homepage = "https://github.com/veeso/pavao"
 include = [
+  "samba/**/*",
   "src/**/*",
   "build.rs",
   "../LICENSE",
