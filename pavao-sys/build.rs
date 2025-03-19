@@ -38,6 +38,7 @@ fn build_normal() {
 fn build_vendored() {
     let mut build = pavao_src::Build::new();
 
+    println!("building vendored samba library... this may take several minutes");
     let artifacts = build.build();
     println!("cargo:vendored=1");
     println!(
@@ -64,4 +65,18 @@ fn build_vendored() {
     );
     println!("cargo:include={}", artifacts.include_dir.display());
     println!("cargo:rustc-link-lib=static=smbclient");
+
+    // add further dependencies
+    println!("cargo:rustc-link-lib=z");
+    println!("cargo:rustc-link-lib=ldap");
+    println!("cargo:rustc-link-lib=cups");
+    println!("cargo:rustc-link-lib=lber");
+    println!("cargo:rustc-link-lib=jansson");
+    println!("cargo:rustc-link-lib=icui18n");
+    println!("cargo:rustc-link-lib=icuuc");
+    println!("cargo:rustc-link-lib=gnutls");
+    println!("cargo:rustc-link-lib=cap");
+    println!("cargo:rustc-link-lib=bsd");
+    println!("cargo:rustc-link-lib=resolv");
+    println!("cargo:rustc-link-lib=keyutils");
 }
