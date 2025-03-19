@@ -13,7 +13,7 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.me/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.2.10 (21/02/2025)</p>
+<p align="center">Current version: 0.2.11 (19/03/2025)</p>
 
 <p align="center">
   <a href="https://www.gnu.org/licenses/gpl-3.0"
@@ -81,6 +81,7 @@
       - [Build from sources 📁](#build-from-sources-)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
+  - [Vendored libsmbclient](#vendored-libsmbclient)
   - [Documentation 📚](#documentation-)
   - [Support the developer ☕](#support-the-developer-)
   - [Contributing and issues 🤝🏻](#contributing-and-issues-)
@@ -93,7 +94,9 @@
 
 Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which exposes type-safe functions to interact with the C libsmbclient.
 
-> Pavão |> Pavé |> Animal Crossing |> Carnival |> Rio De Janeiro |> Samba |> SMB
+<p align="center">
+  <img src="docs/images/pavao.gif" alt="pavao gif" width="auto" height="150" />
+</p>
 
 ### SMB Rust client for Windows
 
@@ -212,6 +215,18 @@ while the `transfer` example shows how to write a file to the remote host and ca
 ```sh
 cargo run --example transfer -- -i <file_on_local> -o <file_to_write> -u <username> -w <workspace> -s <share> -P <password> smb://<hostname>
 ```
+
+---
+
+## Vendored libsmbclient
+
+Well, I tried <https://github.com/veeso/pavao/issues/20#issuecomment-2736361603>.
+
+If you want you can try yourself if you're a wizard of C or a masochist.
+
+> TL;DR
+> libsmbclient can't be built statically, because it's a mess. No static no vendor.  
+> There could also be a chance in embedding the .so and using libloading to load it at runtime, but I have no idea how to do that.
 
 ---
 

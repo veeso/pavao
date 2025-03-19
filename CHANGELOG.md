@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.11](#0211)
   - [0.2.10](#0210)
   - [0.2.9](#029)
   - [0.2.8](#028)
@@ -17,6 +18,12 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.11
+
+Released on 19/03/2025
+
+- split pavao into `pavao` and `pavao-sys` (which just contains the libsmbclient bindings)
 
 ## 0.2.10
 
