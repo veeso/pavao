@@ -190,7 +190,7 @@ pavao = { version = "0.2", features = ["vendored"] }
 > [!CAUTION]
 > Mind that libsmbclient is a bloated library with tons of dependencies, so the vendored feature will increase the size of the final binary and may not work on all platforms.
 
-In order to build and run with the `vendored` feature YOU MUST have the following libraries in your LD_LIBRARY_PATH:
+In order to build and run with the `vendored` feature YOU MUST have the following libraries in your **LD_LIBRARY_PATH**:
 
 - bsd
 - cap
@@ -204,6 +204,33 @@ In order to build and run with the `vendored` feature YOU MUST have the followin
 - ldap
 - resolv
 - z
+
+Also, **these packages should be necessary on Linux**:
+
+- python3
+- make
+- build-essential
+- pkg-config
+- libbsd-dev
+- libcap-dev
+- libcups2-dev
+- libgnutls28-dev
+- libicu-dev
+- libjansson-dev
+- libkeyutils-dev
+- libldap2-dev
+- zlib1g-dev
+- libpam0g-dev
+- libacl1-dev
+- libarchive-dev
+- flex
+- bison
+- libntirpc-dev
+- libtracker-sparql-3.0-dev
+- libglib2.0-dev
+- libdbus-1-dev
+
+and these on MacOS:
 
 ---
 
