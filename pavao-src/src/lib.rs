@@ -194,7 +194,7 @@ const AUTH_SRC_FILES: &[&str] = &[
     "netlogon_creds_cli.c",
 ];
 
-const LIBCLI_SMB_SRC_FILES: &[&str] = &["smbXcli_base.c.4"];
+const LIBCLI_SMB_SRC_FILES: &[&str] = &["smbXcli_base.c"];
 
 /// Artifacts produced by the build process.
 pub struct Artifacts {
