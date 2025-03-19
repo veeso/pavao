@@ -59,6 +59,10 @@ jobs:
           zlib \
           openldap \
           cpanminus \
+          libarchive \
+          flex \
+          bison \
+          libntirpc \
           cups
           brew link --force icu4c
           cpanm Parse::Yapp::Driver
