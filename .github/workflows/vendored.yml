@@ -41,6 +41,9 @@ jobs:
           flex \
           bison \
           libntirpc-dev \
+          libtracker-sparql-3.0-dev \
+          libglib2.0-dev \
+          libdbus-1-dev \
           cpanminus;
           sudo cpanm Parse::Yapp::Driver;
       - name: Install dependencies (macOS)
