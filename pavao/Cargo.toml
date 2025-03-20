@@ -32,7 +32,7 @@ path = "src/lib.rs"
 lazy_static = "^1"
 libc = "^0.2"
 log = "^0.4"
-pavao-sys = { version = "0.2", path = "../pavao-sys" }
+pavao-sys = { version = "0.2.12-rc1", path = "../pavao-sys" }
 thiserror = "^2"
 
 [dev-dependencies]
