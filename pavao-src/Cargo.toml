@@ -11,7 +11,7 @@ homepage = "https://github.com/veeso/pavao"
 include = ["src/**/*", "build.rs", "../docs/**/*", "../LICENSE", "README.md"]
 keywords = { workspace = true }
 license = { workspace = true }
-readme = "../README.md"
+readme = "README.md"
 repository = { workspace = true }
 
 [lib]
