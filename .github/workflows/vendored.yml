@@ -11,8 +11,8 @@ jobs:
     strategy:
       matrix:
         os:
-          # - macos-latest # aka macos-15, arm based runner | it's a mess
-          # - macos-13 # intel based runner | it's a mess
+          - macos-latest # aka macos-15, arm based runner | it's a mess
+          - macos-13 # intel based runner | it's a mess
           - ubuntu-latest
 
     steps:
@@ -65,6 +65,16 @@ jobs:
           libtirpc \
           cups
           brew link --force icu4c
+          brew link --force jansson
+          brew link --force gnutls
+          brew link --force zlib
+          brew link --force openldap
+          brew link --force libarchive
+          brew link --force libtirpc
+          brew link --force cups
+          brew link --force libbsd
+          brew link --force flex
+          brew link --force bison
           cpanm Parse::Yapp::Driver
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1

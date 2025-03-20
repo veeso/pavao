@@ -34,8 +34,32 @@ fn build_normal() {
     };
 }
 
-#[cfg(feature = "vendored")]
+#[allow(dead_code)]
 fn build_vendored() {
+    #[cfg(feature = "vendored")]
+    build_samba();
+
+    // add further dependencies
+    add_library("z", "zlib");
+    add_library("ldap", "openldap");
+    add_library("cups", "cups");
+    add_library("lber", "openldap");
+    add_library("jansson", "jansson");
+    add_library("icui18n", "icu4c");
+    add_library("icuuc", "icu4c");
+    add_library("gnutls", "gnutls");
+    add_library("bsd", "libbsd");
+    add_library("resolv", "libresolv");
+
+    // linux only
+    if cfg!(target_os = "linux") {
+        add_library("cap", "cap");
+        add_library("keyutils", "keyutils");
+    }
+}
+
+#[cfg(feature = "vendored")]
+fn build_samba() {
     let mut build = pavao_src::Build::new();
 
     println!("building vendored samba library... this may take several minutes");
@@ -65,22 +89,30 @@ fn build_vendored() {
     );
     println!("cargo:include={}", artifacts.include_dir.display());
     println!("cargo:rustc-link-lib=static=smbclient");
+}
 
-    // add further dependencies
-    println!("cargo:rustc-link-lib=z");
-    println!("cargo:rustc-link-lib=ldap");
-    println!("cargo:rustc-link-lib=cups");
-    println!("cargo:rustc-link-lib=lber");
-    println!("cargo:rustc-link-lib=jansson");
-    println!("cargo:rustc-link-lib=icui18n");
-    println!("cargo:rustc-link-lib=icuuc");
-    println!("cargo:rustc-link-lib=gnutls");
-    println!("cargo:rustc-link-lib=bsd");
-    println!("cargo:rustc-link-lib=resolv");
+fn add_library(lib: &str, brew_name: &str) {
+    // search lib with pkg-config and try static
 
-    // linux only
-    if cfg!(target_os = "linux") {
-        println!("cargo:rustc-link-lib=cap");
-        println!("cargo:rustc-link-lib=keyutils");
-    }
+    match pkg_config::Config::new()
+        .statik(true)
+        .cargo_metadata(true)
+        .probe(lib)
+    {
+        Ok(_) => {
+            if cfg!(target_os = "macos") {
+                if cfg!(target_arch = "aarch64") {
+                    println!("cargo:rustc-link-search=/opt/homebrew/opt/{brew_name}/lib");
+                } else if cfg!(target_arch = "x86_64") {
+                    println!("cargo:rustc-link-search=/usr/local/Homebrew/opt/{brew_name}/lib");
+                }
+                println!("cargo:rustc-link-lib={lib}");
+            }
+        }
+        Err(_) => {
+            println!("{lib} was not found with pkg_config; trying with LD_LIBRARY_PATH; but you may need to install it manually");
+            // cross-finger and try dylib
+            println!("cargo:rustc-link-lib={lib}");
+        }
+    };
 }
