@@ -11,6 +11,7 @@ homepage = "https://github.com/veeso/pavao"
 include = [
   "src/**/*",
   "build.rs",
+  "../docs/**/*",
   "../LICENSE",
   "../README.md",
   "../CHANGELOG.md",
@@ -33,4 +34,9 @@ path = "src/lib.rs"
 libc = "^0.2"
 
 [build-dependencies]
+cc = { version = "1", optional = true }
+pavao-src = { version = "4.22.0", path = "../pavao-src", optional = true }
 pkg-config = "0.3"
+
+[features]
+vendored = ["dep:cc", "dep:pavao-src"]

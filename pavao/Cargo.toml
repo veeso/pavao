@@ -12,9 +12,10 @@ include = [
   "src/**/*",
   "examples/**/*",
   "build.rs",
-  "LICENSE",
-  "README.md",
-  "CHANGELOG.md",
+  "../docs/**/*",
+  "../LICENSE",
+  "../README.md",
+  "../CHANGELOG.md",
 ]
 keywords = { workspace = true }
 license = { workspace = true }
@@ -31,7 +32,7 @@ path = "src/lib.rs"
 lazy_static = "^1"
 libc = "^0.2"
 log = "^0.4"
-pavao-sys = { version = "0.2", path = "../pavao-sys" }
+pavao-sys = { version = "0.2.12", path = "../pavao-sys" }
 thiserror = "^2"
 
 [dev-dependencies]
@@ -50,6 +51,7 @@ cfg_aliases = "0.2"
 [features]
 debug = []
 no-log = ["log/max_level_off"]
+vendored = ["pavao-sys/vendored"]
 
 [[example]]
 name = "transfer"
