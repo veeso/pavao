@@ -17,13 +17,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install dependencies (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           sudo apt update && sudo apt install -y \
           make \
+          libgit2-dev \
           build-essential \
           pkg-config \
           libbsd-dev \
@@ -55,6 +54,7 @@ jobs:
           brew install \
           pkg-config \
           libbsd \
+          libgit2 \
           icu4c \
           jansson \
           gnutls \
@@ -77,6 +77,7 @@ jobs:
           brew link --force libbsd
           brew link --force flex
           brew link --force bison
+          brew link --force libgit2
           cpanm Parse::Yapp::Driver
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1

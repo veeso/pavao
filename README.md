@@ -192,45 +192,7 @@ pavao = { version = "0.2", features = ["vendored"] }
 
 In order to build and run with the `vendored` feature YOU MUST have the following libraries in your **LD_LIBRARY_PATH**:
 
-- bsd
-- cap
-- cups
-- gnutls
-- icui18n
-- icuuc
-- jansson
-- keyutils
-- lber
-- ldap
-- resolv
-- z
-
-Also, **these packages should be necessary on Linux**:
-
-- python3
-- make
-- build-essential
-- pkg-config
-- libbsd-dev
-- libcap-dev
-- libcups2-dev
-- libgnutls28-dev
-- libicu-dev
-- libjansson-dev
-- libkeyutils-dev
-- libldap2-dev
-- zlib1g-dev
-- libpam0g-dev
-- libacl1-dev
-- libarchive-dev
-- flex
-- bison
-- libntirpc-dev
-- libtracker-sparql-3.0-dev
-- libglib2.0-dev
-- libdbus-1-dev
-
-and these on MacOS:
+see [DEPENDENCIES](./pavao-src/README.md)
 
 ---
 

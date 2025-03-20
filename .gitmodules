@@ -1,3 +1,0 @@
-[submodule "pavao-src/samba"]
-	path = pavao-src/samba
-	url = https://git.samba.org/samba.git

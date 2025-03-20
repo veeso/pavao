@@ -1348,11 +1348,6 @@ pub struct Artifacts {
     pub include_dir: PathBuf,
 }
 
-/// Source dir
-pub fn source_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("samba")
-}
-
 /// samba version
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -1445,7 +1440,9 @@ impl Build {
 
         let inner_dir = build_dir.join("src");
         fs::create_dir_all(&inner_dir).map_err(|e| format!("{}: {e}", inner_dir.display()))?;
-        copy_r(&source_dir(), &inner_dir)?;
+
+        // get src at `inner_dir`
+        clone_samba(&inner_dir)?;
 
         // init cc
         let mut cc = cc::Build::new();
@@ -1765,42 +1762,26 @@ impl Build {
     }
 }
 
-/// Copy recursively from src to dst.
-fn copy_r(src: &Path, dst: &Path) -> Result<(), String> {
-    for f in fs::read_dir(src).map_err(|e| format!("{}: {e}", src.display()))? {
-        let f = match f {
-            Ok(f) => f,
-            _ => continue,
-        };
-        let path = f.path();
-        let name = path
-            .file_name()
-            .ok_or_else(|| format!("bad dir {}", src.display()))?;
+/// Clone samba repository to the given path.
+fn clone_samba(p: &Path) -> Result<(), String> {
+    let repo_url = "https://git.samba.org/samba.git";
+    let repo = git2::Repository::clone(repo_url, p).map_err(|e| format!("cloning samba: {e}"))?;
 
-        // Skip git metadata as it's been known to cause issues (#26) and
-        // otherwise shouldn't be required
-        if name.to_str() == Some(".git") {
-            continue;
-        }
+    // checkout tag "samba-4.22.0"
+    let tag = format!("samba-{}", version());
+    let obj = repo
+        .revparse_single(&tag)
+        .map_err(|e| format!("revparse_single: {e}"))?;
 
-        let dst = dst.join(name);
-        let ty = f.file_type().map_err(|e| e.to_string())?;
-        if ty.is_dir() {
-            fs::create_dir_all(&dst).map_err(|e| e.to_string())?;
-            copy_r(&path, &dst)?;
-        } else if ty.is_symlink() {
-            // not needed to build
-            continue;
-        } else {
-            let _ = fs::remove_file(&dst);
-            if let Err(e) = fs::copy(&path, &dst) {
-                return Err(format!(
-                    "failed to copy '{}' to '{}': {e}",
-                    path.display(),
-                    dst.display()
-                ));
-            }
-        }
-    }
+    let commit = obj
+        .peel_to_commit()
+        .map_err(|e| format!("peel_to_commit: {e}"))?;
+
+    repo.checkout_tree(&obj, None)
+        .map_err(|e| format!("checkout_tree: {e}"))?;
+
+    repo.set_head_detached(commit.id())
+        .map_err(|e| format!("set_head_detached: {e}"))?;
+
     Ok(())
 }
