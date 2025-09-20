@@ -56,6 +56,13 @@ fn build_vendored() {
         add_library("cap", "cap");
         add_library("keyutils", "keyutils");
     }
+
+    // macOS only
+    if cfg!(target_os = "macos") {
+        add_library("gmp", "gmp");
+        add_library("intl", "gettext");
+        add_library("unistring", "libunistring");
+    }
 }
 
 #[cfg(feature = "vendored")]
@@ -112,6 +119,11 @@ fn add_library(lib: &str, brew_name: &str) {
         Err(_) => {
             println!("{lib} was not found with pkg_config; trying with LD_LIBRARY_PATH; but you may need to install it manually");
             // cross-finger and try dylib
+            if cfg!(target_arch = "aarch64") {
+                println!("cargo:rustc-link-search=/opt/homebrew/opt/{brew_name}/lib");
+            } else if cfg!(target_arch = "x86_64") {
+                println!("cargo:rustc-link-search=/usr/local/Homebrew/opt/{brew_name}/lib");
+            }
             println!("cargo:rustc-link-lib={lib}");
         }
     };

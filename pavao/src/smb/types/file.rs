@@ -26,12 +26,10 @@ impl<'a> SmbFile<'a> {
 impl Read for SmbFile<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         trace!("reading file to buf [{:?};{}]", buf.as_ptr(), buf.len());
-        let ctx = self.smbc.ctx().map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                "smbc context is not initialized, cannot read",
-            )
-        })?;
+        let ctx = self
+            .smbc
+            .ctx()
+            .map_err(|_| std::io::Error::other("smbc context is not initialized, cannot read"))?;
         let read_fn = self.smbc.get_fn(ctx, smbc_getFunctionRead)?;
         let bytes_read = utils::to_result_with_le(read_fn(
             ctx,
@@ -46,12 +44,10 @@ impl Read for SmbFile<'_> {
 impl Write for SmbFile<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         trace!("writing buf [{:?};{}] to file", buf.as_ptr(), buf.len());
-        let ctx = self.smbc.ctx().map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                "smbc context is not initialized, cannot read",
-            )
-        })?;
+        let ctx = self
+            .smbc
+            .ctx()
+            .map_err(|_| std::io::Error::other("smbc context is not initialized, cannot read"))?;
         let write_fn = self.smbc.get_fn(ctx, smbc_getFunctionWrite)?;
         let bytes_wrote = utils::to_result_with_le(write_fn(
             ctx,
@@ -71,12 +67,10 @@ impl Write for SmbFile<'_> {
 impl Seek for SmbFile<'_> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         trace!("seeking file at {:?}", pos);
-        let ctx = self.smbc.ctx().map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                "smbc context is not initialized, cannot read",
-            )
-        })?;
+        let ctx = self
+            .smbc
+            .ctx()
+            .map_err(|_| std::io::Error::other("smbc context is not initialized, cannot read"))?;
         let lseek_fn = self.smbc.get_fn(ctx, smbc_getFunctionLseek)?;
         let (whence, off) = match pos {
             SeekFrom::Start(p) => (libc::SEEK_SET, p as off_t),

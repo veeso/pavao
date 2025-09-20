@@ -85,6 +85,7 @@ const SRC_FILES: &[&str] = &[
     "lib/util/time_basic.c",
     "lib/util/blocking.c",
     "lib/util/close_low_fd.c",
+    #[cfg(target_os = "linux")]
     "lib/util/gpfswrap.c",
     "lib/util/debug.c",
     "lib/util/iov_buf.c",
@@ -107,6 +108,7 @@ const SRC_FILES: &[&str] = &[
     "lib/tevent/tevent_timed.c",
     "lib/tevent/tevent_util.c",
     "lib/tevent/tevent_wakeup.c",
+    #[cfg(target_os = "linux")]
     "lib/tevent/tevent_epoll.c",
     "lib/util/sys_rw.c",
     "lib/util/sys_rw_data.c",
@@ -1339,6 +1341,7 @@ const TEVENT_SRC: &[&str] = &[
     "lib/tevent/tevent_timed.c",
     "lib/tevent/tevent_util.c",
     "lib/tevent/tevent_wakeup.c",
+    #[cfg(target_os = "linux")]
     "lib/tevent/tevent_epoll.c",
 ];
 
@@ -1350,7 +1353,11 @@ pub struct Artifacts {
 
 /// samba version
 pub fn version() -> &'static str {
+    // get pkg version and remove any `-`
     env!("CARGO_PKG_VERSION")
+        .split('-')
+        .next()
+        .expect("Invalid version format")
 }
 
 /// Build configuration
@@ -1469,6 +1476,11 @@ impl Build {
         configure.arg("--without-acl-support"); // not supported on mac
         configure.env("CC", cc_env);
         configure.env("AR", ar.get_program());
+        // On MacOS we need to explicitly declare include paths for gnutls
+        #[cfg(target_os = "macos")]
+        {
+            add_env_includes(&mut configure, "gnutls")?;
+        }
 
         let ranlib = cc.get_ranlib();
         let mut args = vec![ranlib.get_program()];
@@ -1551,6 +1563,8 @@ impl Build {
             .map(|s| s.to_string())
             .collect();
 
+        let mut logfile = std::fs::File::create("/tmp/samba-build.log")
+            .map_err(|e| format!("failed to create build log: {e}"))?;
         // push object
         for object in unique_src {
             let path = lib_dir.join(object);
@@ -1560,6 +1574,8 @@ impl Build {
                 path.display()
             ))?;
 
+            use std::io::Write;
+            writeln!(logfile, "object file: {}", object_file.display()).ok();
             build_static.arg(object_file.display().to_string());
         }
 
@@ -1782,6 +1798,27 @@ fn clone_samba(p: &Path) -> Result<(), String> {
 
     repo.set_head_detached(commit.id())
         .map_err(|e| format!("set_head_detached: {e}"))?;
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn add_env_includes(cmd: &mut Command, lib_name: &str) -> Result<(), String> {
+    let lib = pkg_config::Config::new()
+        .env_metadata(false)
+        .cargo_metadata(false)
+        .print_system_cflags(false)
+        .print_system_libs(false)
+        .probe(lib_name)
+        .map_err(|e| format!("pkg_config probe {lib_name}: {e}"))?;
+
+    let cflags = lib
+        .include_paths
+        .iter()
+        .map(|p| format!("-I{}", p.display()))
+        .collect::<Vec<_>>()
+        .join(" ");
+    cmd.env("CFLAGS", cflags);
 
     Ok(())
 }

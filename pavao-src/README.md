@@ -35,45 +35,48 @@ Contains the source code to build the libsmbclient statically to vendor it into 
 
 **these packages should be necessary on Linux**:
 
-- python3
-- make
+- bison
 - build-essential
-- pkg-config
+- flex
+- libacl1-dev
+- libarchive-dev
 - libbsd-dev
 - libcap-dev
 - libcups2-dev
+- libdbus-1-dev
+- libglib2.0-dev
 - libgnutls28-dev
 - libicu-dev
 - libjansson-dev
 - libkeyutils-dev
 - libldap2-dev
-- zlib1g-dev
-- libpam0g-dev
-- libacl1-dev
-- libarchive-dev
-- flex
-- bison
 - libntirpc-dev
+- libpam0g-dev
 - libtracker-sparql-3.0-dev
-- libglib2.0-dev
-- libdbus-1-dev
+- make
+- pkg-config
+- python3
+- zlib1g-dev
 
 and these on **MacOS**:
 
-- pkg
-- libbsd
-- libgit2
+- bison
+- cpanminus
+- cups
+- flex
+- gettext
+- gmp
+- gnutls
 - icu4c
 - jansson
-- gnutls
-- zlib
-- openldap
-- cpanminus
 - libarchive
-- flex
-- bison
+- libbsd
+- libunistring
+- libgit2
 - libtirpc
-- cups
+- openldap
+- pkg
+- zlib
 
 ## License 📃
 

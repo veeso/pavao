@@ -11,8 +11,7 @@ jobs:
     strategy:
       matrix:
         os:
-          # - macos-latest # aka macos-15, arm based runner | it's a mess
-          # - macos-13 # intel based runner | it's a mess
+          - macos-latest # Apple Silicon
           - ubuntu-latest
 
     steps:
@@ -52,32 +51,38 @@ jobs:
         run: |
           brew update
           brew install \
-          pkg-config \
-          libbsd \
-          libgit2 \
+          bison \
+          cpanminus \
+          cups \
+          flex \
+          gettext \
+          gmp \
+          gnutls \
           icu4c \
           jansson \
-          gnutls \
-          zlib \
-          openldap \
-          cpanminus \
           libarchive \
-          flex \
-          bison \
+          libbsd \
+          libunistring \
+          libgit2 \
           libtirpc \
-          cups
+          openldap \
+          pkg-config \
+          zlib
+          brew link --force bison
+          brew link --force cups
+          brew link --force flex
+          brew link --force gettext
+          brew link --force gmp
+          brew link --force gnutls
           brew link --force icu4c
           brew link --force jansson
-          brew link --force gnutls
-          brew link --force zlib
-          brew link --force openldap
           brew link --force libarchive
-          brew link --force libtirpc
-          brew link --force cups
           brew link --force libbsd
-          brew link --force flex
-          brew link --force bison
           brew link --force libgit2
+          brew link --force libtirpc
+          brew link --force libunistring
+          brew link --force openldap
+          brew link --force zlib
           cpanm Parse::Yapp::Driver
       - name: Setup Rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@v1

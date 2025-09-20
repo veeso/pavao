@@ -72,7 +72,7 @@
     - [SMB Rust client for Windows](#smb-rust-client-for-windows)
   - [Get started 🏁](#get-started-)
     - [Add pavao to your Cargo.toml 🦀](#add-pavao-to-your-cargotoml-)
-    - [Install pavao C dependencies on your system 🖥️](#install-pavao-c-dependencies-on-your-system-️)
+    - [Install pavao C dependencies on your system 🖥️ (not vendored)](#install-pavao-c-dependencies-on-your-system-️-not-vendored)
       - [MacOS 🍎](#macos-)
       - [Debian based systems 🐧](#debian-based-systems-)
       - [RedHat based systems 🐧](#redhat-based-systems-)
@@ -112,7 +112,7 @@ SMB is natively supported on Windows by the fs module. If you're looking on how 
 pavao = "0.2"
 ```
 
-### Install pavao C dependencies on your system 🖥️
+### Install pavao C dependencies on your system 🖥️ (not vendored)
 
 #### MacOS 🍎
 
@@ -163,7 +163,7 @@ pkg install samba
 Install libsmbclient building from sources:
 
 ```sh
-wget -O samba.tar.gz https://github.com/samba-team/samba/archive/refs/tags/samba-4.16.1.tar.gz
+wget -O samba.tar.gz https://github.com/samba-team/samba/archive/refs/tags/samba-4.23.0.tar.gz
 mkdir -p samba/
 tar  xzvf samba.tar.gz -C samba/ --strip-components=1
 rm samba.tar.gz
