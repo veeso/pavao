@@ -1805,7 +1805,7 @@ fn add_env_includes(cmd: &mut Command, lib_name: &str) -> Result<(), String> {
         .cargo_metadata(false)
         .print_system_cflags(false)
         .print_system_libs(false)
-        .probe(&lib_name)
+        .probe(lib_name)
         .map_err(|e| format!("pkg_config probe {lib_name}: {e}"))?;
 
     let cflags = lib
