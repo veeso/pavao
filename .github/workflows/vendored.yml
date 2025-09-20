@@ -84,7 +84,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Build samba from source
-        if: ${{ matrix.os == 'MacOS' }}
+        if: ${{ runner.os == 'MacOS' }}
         run: |
           git clone https://git.samba.org/samba.git
           cd samba/ 
