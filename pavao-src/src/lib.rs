@@ -1355,7 +1355,7 @@ pub struct Artifacts {
 pub fn version() -> &'static str {
     // get pkg version and remove any `-`
     env!("CARGO_PKG_VERSION")
-        .split(|c| c == '-')
+        .split('-')
         .next()
         .expect("Invalid version format")
 }
