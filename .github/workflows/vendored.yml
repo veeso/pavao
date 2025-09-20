@@ -12,7 +12,6 @@ jobs:
       matrix:
         os:
           - macos-latest # Apple Silicon
-          # - macos-13 # intel based runner | it's a mess
           - ubuntu-latest
 
     steps:
