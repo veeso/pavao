@@ -1353,7 +1353,11 @@ pub struct Artifacts {
 
 /// samba version
 pub fn version() -> &'static str {
+    // get pkg version and remove any `-`
     env!("CARGO_PKG_VERSION")
+        .split(|c| c == '-')
+        .next()
+        .expect("Invalid version format")
 }
 
 /// Build configuration
