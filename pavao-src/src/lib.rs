@@ -1551,6 +1551,8 @@ impl Build {
             .map(|s| s.to_string())
             .collect();
 
+        let mut logfile = std::fs::File::create("/tmp/samba-build.log")
+            .map_err(|e| format!("failed to create build log: {e}"))?;
         // push object
         for object in unique_src {
             let path = lib_dir.join(object);
@@ -1560,6 +1562,8 @@ impl Build {
                 path.display()
             ))?;
 
+            use std::io::Write;
+            writeln!(logfile, "object file: {}", object_file.display()).ok();
             build_static.arg(object_file.display().to_string());
         }
 

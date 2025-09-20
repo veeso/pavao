@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os:
-          # - macos-latest # aka macos-15, arm based runner | it's a mess
+          - macos-latest # Apple Silicon
           # - macos-13 # intel based runner | it's a mess
           - ubuntu-latest
 
