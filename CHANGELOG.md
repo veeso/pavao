@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.13](#0213)
   - [0.2.12](#0212)
   - [0.2.11](#0211)
   - [0.2.10](#0210)
@@ -19,6 +20,12 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.13
+
+Released on 20/09/2025
+
+- Vendored samba now builds on MacOS.
 
 ## 0.2.12
 
