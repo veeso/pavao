@@ -1805,7 +1805,7 @@ fn clone_samba(p: &Path) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 fn add_env_includes(cmd: &mut Command, lib_name: &str) -> Result<(), String> {
     let lib = pkg_config::Config::new()
-        .env_metadata(false)
+        .env_metadata(true)
         .cargo_metadata(false)
         .print_system_cflags(false)
         .print_system_libs(false)

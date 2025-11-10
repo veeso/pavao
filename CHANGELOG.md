@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.14](#0214)
   - [0.2.13](#0213)
   - [0.2.12](#0212)
   - [0.2.11](#0211)
@@ -20,6 +21,12 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.2.14
+
+Released on 10/11/2025
+
+- Fixed build for vendored samba on MacOS when imported in other projects.
 
 ## 0.2.13
 
