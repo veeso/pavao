@@ -1366,6 +1366,7 @@ pub struct Build {
     target: Option<String>,
     host: Option<String>,
     samba_dir: Option<PathBuf>,
+    gnutls: Option<Vec<PathBuf>>,
 }
 
 impl Default for Build {
@@ -1382,6 +1383,7 @@ impl Build {
             target: env::var("TARGET").ok(),
             host: env::var("HOST").ok(),
             samba_dir: Some(PathBuf::from("/usr/local/samba")),
+            gnutls: None,
         }
     }
 
@@ -1402,6 +1404,11 @@ impl Build {
 
     pub fn samba_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Build {
         self.samba_dir = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    pub fn gnutls(&mut self, paths: Vec<PathBuf>) -> &mut Build {
+        self.gnutls = Some(paths);
         self
     }
 
@@ -1479,7 +1486,8 @@ impl Build {
         // On MacOS we need to explicitly declare include paths for gnutls
         #[cfg(target_os = "macos")]
         {
-            add_env_includes(&mut configure, "gnutls")?;
+            let gnutls_paths = self.gnutls.as_ref().ok_or("gnutls paths not set")?;
+            add_env_includes(&mut configure, gnutls_paths)?;
         }
 
         let ranlib = cc.get_ranlib();
@@ -1803,17 +1811,8 @@ fn clone_samba(p: &Path) -> Result<(), String> {
 }
 
 #[cfg(target_os = "macos")]
-fn add_env_includes(cmd: &mut Command, lib_name: &str) -> Result<(), String> {
-    let lib = pkg_config::Config::new()
-        .env_metadata(true)
-        .cargo_metadata(false)
-        .print_system_cflags(false)
-        .print_system_libs(false)
-        .probe(lib_name)
-        .map_err(|e| format!("pkg_config probe {lib_name}: {e}"))?;
-
-    let cflags = lib
-        .include_paths
+fn add_env_includes(cmd: &mut Command, include_paths: &[PathBuf]) -> Result<(), String> {
+    let cflags = include_paths
         .iter()
         .map(|p| format!("-I{}", p.display()))
         .collect::<Vec<_>>()

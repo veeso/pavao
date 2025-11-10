@@ -68,6 +68,11 @@ fn build_vendored() {
 #[cfg(feature = "vendored")]
 fn build_samba() {
     let mut build = pavao_src::Build::new();
+    #[cfg(target_os = "macos")]
+    {
+        let gnutls_includes = get_includes("gnutls");
+        build.gnutls(gnutls_includes);
+    }
 
     println!("building vendored samba library... this may take several minutes");
     let artifacts = build.build();
@@ -127,4 +132,38 @@ fn add_library(lib: &str, brew_name: &str) {
             println!("cargo:rustc-link-lib={lib}");
         }
     };
+}
+
+#[cfg(all(target_os = "macos", feature = "vendored"))]
+fn get_includes(lib_name: &str) -> Vec<std::path::PathBuf> {
+    let lib = pkg_config::Config::new()
+        .env_metadata(false)
+        .cargo_metadata(false)
+        .print_system_cflags(false)
+        .print_system_libs(false)
+        .probe(lib_name)
+        .map_err(|e| format!("pkg_config probe {lib_name}: {e}"))
+        .expect("Unable to get pkg-config for library");
+
+    // PKG_CONFIG_PATH must be set to find gnutls on macOS homebrew installs
+    if std::env::var_os("PKG_CONFIG_PATH").is_none() {
+        panic!("PKG_CONFIG_PATH is not set");
+    }
+
+    // check if empty
+    if lib.include_paths.is_empty() {
+        panic!("no include paths found for {lib_name}");
+    }
+
+    // check if exist
+    for path in &lib.include_paths {
+        if !path.exists() {
+            panic!(
+                "include path {} for {lib_name} does not exist",
+                path.display()
+            );
+        }
+    }
+
+    lib.include_paths
 }
