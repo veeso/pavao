@@ -145,11 +145,6 @@ fn get_includes(lib_name: &str) -> Vec<std::path::PathBuf> {
         .map_err(|e| format!("pkg_config probe {lib_name}: {e}"))
         .expect("Unable to get pkg-config for library");
 
-    // PKG_CONFIG_PATH must be set to find gnutls on macOS homebrew installs
-    if std::env::var_os("PKG_CONFIG_PATH").is_none() {
-        panic!("PKG_CONFIG_PATH is not set");
-    }
-
     // check if empty
     if lib.include_paths.is_empty() {
         panic!("no include paths found for {lib_name}");
