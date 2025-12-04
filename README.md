@@ -273,6 +273,6 @@ View Pavão's changelog [HERE](CHANGELOG.md)
 
 ## License 📃
 
-Pavão is licensed under the GPLv3 license.
+Pavão is licensed under the MIT license.
 
 You can read the entire license [HERE](LICENSE)
