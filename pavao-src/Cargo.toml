@@ -1,6 +1,6 @@
 [package]
 name = "pavao-src"
-version = "4.22.0-3"                                                          # refers to samba version
+version = "4.22.0-4"                                                          # refers to samba version
 authors = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }

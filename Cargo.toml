@@ -3,10 +3,10 @@ members = ["pavao", "pavao-src", "pavao-sys"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.15"
+version = "0.2.16"
 edition = "2021"
 rust-version = "1.78.0"
 authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
 repository = "https://github.com/veeso/pavao"
-license = "GPL-3.0"
+license = "MIT"
 keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]

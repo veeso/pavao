@@ -13,13 +13,13 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.me/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.2.15 (10/11/2025)</p>
+<p align="center">Current version: 0.2.16 (04/12/2025)</p>
 
 <p align="center">
-  <a href="https://www.gnu.org/licenses/gpl-3.0"
+  <a href="https://opensource.org/license/MIT"
     ><img
-      src="https://img.shields.io/badge/License-GPLv3-blue.svg"
-      alt="License-GPLv3"
+      src="https://img.shields.io/badge/License-MIT-blue.svg"
+      alt="License-MIT"
   /></a>
   <a href="https://github.com/veeso/pavao/stargazers"
     ><img
