@@ -52,6 +52,7 @@ lazy_static! {
 }
 
 /// Smb protocol client
+#[derive(Debug)]
 pub struct SmbClient {
     uri: String,
 }
