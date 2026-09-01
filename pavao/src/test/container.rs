@@ -49,10 +49,6 @@ pub struct SambaContainer {
 }
 
 impl SambaContainer {
-    #[expect(
-        dead_code,
-        reason = "default test contexts delegate through configurable startup"
-    )]
     pub fn start() -> Self {
         Self::start_with_globals(&[])
     }
