@@ -1158,6 +1158,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionOpenPrintJob(c: *mut SMBCCTX) -> smbc_open_print_job_fn;
+    /// Returns the print-job listing callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionListPrintJobs(c: *mut SMBCCTX) -> smbc_list_print_jobs_fn;
     /// Allocates a new, uninitialized native SMB context.
     ///
     /// Returns null and sets `errno` to `ENOMEM` when allocation fails.
@@ -1695,6 +1701,14 @@ mod tests {
     fn binds_smbc_get_function_open_print_job() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionOpenPrintJob(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_list_print_jobs() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionListPrintJobs(context).is_some());
         });
     }
 }
