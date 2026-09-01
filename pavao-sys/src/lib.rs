@@ -108,7 +108,7 @@ impl default::Default for libsmb_file_info {
 pub type smbc_share_mode = c_uint;
 
 /// Native value for the SMB transport encryption policy.
-pub type smbc_smb_encrypt_level = c_uint;
+pub type smbc_smb_encrypt_level = c_int;
 
 /// Native Boolean represented as a C integer.
 pub type smbc_bool = c_int;
@@ -802,5 +802,11 @@ mod tests {
         };
         assert_eq!(info.size, u64::MAX);
         assert_eq!(std::mem::size_of_val(&info.size), 8);
+    }
+
+    #[test]
+    fn uses_signed_encryption_level() {
+        let level: smbc_smb_encrypt_level = -1;
+        assert_eq!(level, -1);
     }
 }
