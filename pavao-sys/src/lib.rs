@@ -810,6 +810,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionUrlEncodeReaddirEntries(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether each server connection is restricted to one share.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionOneSharePerServer(c: *mut SMBCCTX) -> smbc_bool;
     /// Restricts each server connection to one share when enabled.
     ///
     /// # Safety
@@ -1325,6 +1331,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionUrlEncodeReaddirEntries(context, 1);
             assert_eq!(smbc_getOptionUrlEncodeReaddirEntries(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_one_share_per_server_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionOneSharePerServer(context, 1);
+            assert_eq!(smbc_getOptionOneSharePerServer(context), 1);
         });
     }
 }
