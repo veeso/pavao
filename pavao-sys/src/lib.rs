@@ -713,6 +713,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_setOptionFullTimeNames(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns the user data pointer stored in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionUserData(c: *mut SMBCCTX) -> *mut c_void;
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1140,6 +1146,14 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionFullTimeNames(context, 1);
             assert_eq!(smbc_getOptionFullTimeNames(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_empty_user_data() {
+        with_context(|context| unsafe {
+            assert!(smbc_getOptionUserData(context).is_null());
         });
     }
 }
