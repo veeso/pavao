@@ -2,18 +2,22 @@
 
 use pavao_sys::{smbc_share_mode, smbc_smb_encrypt_level};
 
-/// Optional behavior applied when initializing the shared SMB context.
+use crate::SmbDialect;
+
+/// Optional behavior applied when initializing a client's SMB context.
 ///
 /// Use the builder-style methods to override individual defaults.
 ///
 /// # Examples
 ///
 /// ```
-/// use pavao::{SmbEncryptionLevel, SmbOptions, SmbShareMode};
+/// use pavao::{SmbDialect, SmbEncryptionLevel, SmbOptions, SmbShareMode};
 ///
 /// let options = SmbOptions::default()
 ///     .case_sensitive(true)
 ///     .encryption_level(SmbEncryptionLevel::Require)
+///     .min_protocol(SmbDialect::Smb202)
+///     .max_protocol(SmbDialect::Smb311)
 ///     .open_share_mode(SmbShareMode::DenyWrite);
 /// ```
 #[derive(Debug, Clone)]
@@ -23,6 +27,8 @@ pub struct SmbOptions {
     pub(crate) encryption_level: SmbEncryptionLevel,
     pub(crate) fallback_after_kerberos: bool,
     pub(crate) full_time_names: bool,
+    pub(crate) max_protocol: Option<SmbDialect>,
+    pub(crate) min_protocol: Option<SmbDialect>,
     pub(crate) no_auto_anonymous_login: bool,
     pub(crate) one_share_per_server: bool,
     pub(crate) open_share_mode: SmbShareMode,
@@ -39,6 +45,8 @@ impl Default for SmbOptions {
             encryption_level: SmbEncryptionLevel::None,
             fallback_after_kerberos: false,
             full_time_names: false,
+            max_protocol: None,
+            min_protocol: None,
             no_auto_anonymous_login: false,
             one_share_per_server: false,
             open_share_mode: SmbShareMode::DenyNone,
@@ -80,6 +88,24 @@ impl SmbOptions {
     /// `libsmbclient`.
     pub fn full_time_names(mut self, full_time_names: bool) -> Self {
         self.full_time_names = full_time_names;
+        self
+    }
+
+    /// Sets the newest SMB dialect offered during negotiation.
+    ///
+    /// When unset, the `client max protocol` value from `smb.conf` applies.
+    pub fn max_protocol(mut self, dialect: SmbDialect) -> Self {
+        self.max_protocol = Some(dialect);
+        self
+    }
+
+    /// Sets the oldest SMB dialect offered during negotiation.
+    ///
+    /// When unset, the `client min protocol` value from `smb.conf` applies. Samba's own
+    /// default excludes SMB1; request [`SmbDialect::Nt1`](crate::SmbDialect::Nt1) explicitly
+    /// to reach an SMB1-only device.
+    pub fn min_protocol(mut self, dialect: SmbDialect) -> Self {
+        self.min_protocol = Some(dialect);
         self
     }
 
@@ -177,6 +203,7 @@ mod test {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::SmbDialect;
 
     #[test]
     fn should_initialize_smb_options() {
@@ -186,6 +213,8 @@ mod test {
         assert_eq!(options.encryption_level, SmbEncryptionLevel::None);
         assert_eq!(options.fallback_after_kerberos, false);
         assert_eq!(options.full_time_names, false);
+        assert_eq!(options.min_protocol, None);
+        assert_eq!(options.max_protocol, None);
         assert_eq!(options.no_auto_anonymous_login, false);
         assert_eq!(options.one_share_per_server, false);
         assert_eq!(options.open_share_mode, SmbShareMode::DenyNone);
@@ -202,6 +231,8 @@ mod test {
             .encryption_level(SmbEncryptionLevel::Require)
             .fallback_after_kerberos(true)
             .full_time_names(true)
+            .max_protocol(SmbDialect::Smb311)
+            .min_protocol(SmbDialect::Smb202)
             .no_auto_anonymous_login(true)
             .one_share_per_server(true)
             .open_share_mode(SmbShareMode::DenyAll)
@@ -213,6 +244,8 @@ mod test {
         assert_eq!(options.encryption_level, SmbEncryptionLevel::Require);
         assert_eq!(options.fallback_after_kerberos, true);
         assert_eq!(options.full_time_names, true);
+        assert_eq!(options.min_protocol, Some(SmbDialect::Smb202));
+        assert_eq!(options.max_protocol, Some(SmbDialect::Smb311));
         assert_eq!(options.no_auto_anonymous_login, true);
         assert_eq!(options.one_share_per_server, true);
         assert_eq!(options.open_share_mode, SmbShareMode::DenyAll);

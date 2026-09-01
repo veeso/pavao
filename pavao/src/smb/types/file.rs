@@ -14,7 +14,7 @@ use crate::{SmbClient, utils};
 /// An open remote file owned by an [`SmbClient`].
 ///
 /// `SmbFile` implements [`Read`], [`Write`], and [`Seek`]. Dropping it attempts to close the native
-/// file handle; closure is skipped if the shared context or close callback is unavailable.
+/// file handle; closure is skipped if the close callback is unavailable.
 /// [`Write::flush`] is a no-op because `libsmbclient` exposes no flush operation.
 pub struct SmbFile<'a> {
     smbc: &'a SmbClient,

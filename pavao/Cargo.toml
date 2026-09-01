@@ -21,7 +21,7 @@ license = { workspace = true }
 readme = "../README.md"
 repository = { workspace = true }
 rust-version = { workspace = true }
-description = "Rust client library for SMB 2/3 based on libsmbclient."
+description = "Rust client library for SMB 1/2/3 based on libsmbclient."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]

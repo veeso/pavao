@@ -11,7 +11,10 @@ fn main() {
 
 #[allow(dead_code)]
 fn build_normal() {
-    match pkg_config::find_library("smbclient") {
+    match pkg_config::Config::new()
+        .atleast_version("0.5.0")
+        .probe("smbclient")
+    {
         Ok(_) => {
             if cfg!(target_os = "macos") {
                 if cfg!(target_arch = "aarch64") {
@@ -26,8 +29,9 @@ fn build_normal() {
         }
         Err(e) => {
             println!(
-                "error: SMB Client library not found! Make sure libsmbclient is installed. \
-                For macOS, install it via Homebrew with `brew install samba`."
+                "error: libsmbclient ABI 0.5.0 or newer (Samba 4.10+) not found! \
+                Pavão requires `smbc_setOptionProtocols`. Install libsmbclient and its \
+                development files; on macOS run `brew install samba`."
             );
             panic!("{}", e);
         }

@@ -3,3 +3,6 @@ Cargo.lock
 lcov.info
 
 target-install/
+
+.superpowers/
+.claude/

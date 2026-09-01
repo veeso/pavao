@@ -767,6 +767,25 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionUseCCache(c: *mut SMBCCTX, b: smbc_bool);
+    /// Sets the minimum and maximum SMB dialects offered during protocol negotiation.
+    ///
+    /// Each protocol name must be a NUL-terminated Samba dialect string such as `NT1`,
+    /// `SMB2_02`, or `SMB3_11`. A null pointer keeps the corresponding `smb.conf` value.
+    /// Returns a non-zero value on success and `0` when a protocol name is not recognized.
+    ///
+    /// Available since Samba 4.10 (libsmbclient ABI 0.5). The call takes effect only when it
+    /// is issued before [`smbc_init_context`].
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, uninitialized [`SMBCCTX`]. Each non-null protocol pointer must point
+    /// to a NUL-terminated, valid Samba dialect string. This call must be issued before
+    /// [`smbc_init_context`].
+    pub fn smbc_setOptionProtocols(
+        c: *mut SMBCCTX,
+        min_protocol: *const c_char,
+        max_protocol: *const c_char,
+    ) -> smbc_bool;
     /// Installs the context-aware authentication callback for `c`.
     ///
     /// # Safety

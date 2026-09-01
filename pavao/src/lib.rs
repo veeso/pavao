@@ -1,6 +1,8 @@
 #![warn(missing_docs)]
 
-//! A safe SMB 2/3 client built on Samba's `libsmbclient`.
+//! A safe SMB 1/2/3 client built on Samba's `libsmbclient`.
+//!
+//! SMB1 (`NT1`) is never negotiated unless both protocol bounds explicitly request it.
 //!
 //! Pavão provides typed APIs for connecting to SMB shares, browsing directories,
 //! inspecting metadata, and reading or writing remote files.
@@ -8,7 +10,7 @@
 //! ## Installation
 //!
 //! ```toml
-//! pavao = "0.2"
+//! pavao = "0.3"
 //! ```
 //!
 //! ## Examples
@@ -62,8 +64,9 @@ pub(crate) mod utils;
 pub use error::{SmbError, SmbResult};
 #[doc(inline)]
 pub use smb::{
-    SmbClient, SmbCredentials, SmbDirent, SmbDirentInfo, SmbDirentType, SmbEncryptionLevel,
-    SmbFile, SmbMode, SmbModeClass, SmbOpenOptions, SmbOptions, SmbShareMode, SmbStat, SmbStatVfs,
+    SmbClient, SmbCredentials, SmbDialect, SmbDirent, SmbDirentInfo, SmbDirentType,
+    SmbEncryptionLevel, SmbFile, SmbMode, SmbModeClass, SmbOpenOptions, SmbOptions, SmbShareMode,
+    SmbStat, SmbStatVfs,
 };
 
 // -- mock

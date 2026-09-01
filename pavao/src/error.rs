@@ -5,6 +5,8 @@ use std::io::Error as IoError;
 
 use thiserror::Error;
 
+use crate::SmbDialect;
+
 /// A result returned by Pavão operations.
 pub type SmbResult<T> = Result<T, SmbError>;
 
@@ -17,12 +19,23 @@ pub enum SmbError {
     /// The native library returned a value Pavão cannot interpret.
     #[error("server returned with a bad value")]
     BadValue,
+    /// The requested minimum SMB dialect is newer than the requested maximum dialect.
+    #[error("invalid protocol range: minimum dialect {min} exceeds maximum dialect {max}")]
+    InvalidProtocolRange {
+        /// The requested minimum dialect.
+        min: SmbDialect,
+        /// The requested maximum dialect.
+        max: SmbDialect,
+    },
     /// An operating-system or native I/O operation failed.
     #[error("IO Error: {0}")]
     Io(IoError),
     /// A path or configuration string contained an interior NUL byte.
     #[error("bad path: {0}")]
     NulInPath(NulError),
+    /// The native library rejected the requested protocol dialect bounds.
+    #[error("native library rejected the requested protocol dialects")]
+    ProtocolConfiguration,
     /// Shared client state could not be accessed because its mutex was poisoned.
     #[error("mutex error")]
     Mutex,
@@ -33,8 +46,16 @@ impl PartialEq for SmbError {
         match (self, other) {
             (Self::BadFileDescriptor, Self::BadFileDescriptor) => true,
             (Self::BadValue, Self::BadValue) => true,
+            (
+                Self::InvalidProtocolRange { min, max },
+                Self::InvalidProtocolRange {
+                    min: min2,
+                    max: max2,
+                },
+            ) => min == min2 && max == max2,
             (Self::Io(io), Self::Io(io2)) => io.kind() == io2.kind(),
             (Self::NulInPath(e), Self::NulInPath(e2)) => e == e2,
+            (Self::ProtocolConfiguration, Self::ProtocolConfiguration) => true,
             (Self::Mutex, Self::Mutex) => true,
             (_, _) => false,
         }
@@ -78,6 +99,41 @@ mod tests {
         let right = CString::new("nul\0path").unwrap_err();
         assert_eq!(SmbError::NulInPath(left), SmbError::NulInPath(right));
         assert_ne!(SmbError::BadValue, SmbError::BadFileDescriptor);
+    }
+
+    #[test]
+    fn protocol_errors_compare_by_variant_and_details() {
+        use crate::SmbDialect;
+
+        assert_eq!(
+            SmbError::InvalidProtocolRange {
+                min: SmbDialect::Smb311,
+                max: SmbDialect::Nt1
+            },
+            SmbError::InvalidProtocolRange {
+                min: SmbDialect::Smb311,
+                max: SmbDialect::Nt1
+            }
+        );
+        assert_ne!(
+            SmbError::InvalidProtocolRange {
+                min: SmbDialect::Smb311,
+                max: SmbDialect::Nt1
+            },
+            SmbError::ProtocolConfiguration
+        );
+        assert_eq!(
+            SmbError::ProtocolConfiguration,
+            SmbError::ProtocolConfiguration
+        );
+        assert_eq!(
+            SmbError::InvalidProtocolRange {
+                min: SmbDialect::Smb311,
+                max: SmbDialect::Nt1
+            }
+            .to_string(),
+            "invalid protocol range: minimum dialect SMB3_11 exceeds maximum dialect NT1"
+        );
     }
 
     #[test]

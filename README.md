@@ -73,6 +73,7 @@
       - [OpenBSD 🐡](#openbsd-)
       - [Termux 🤖](#termux-)
       - [Build from sources 📁](#build-from-sources-)
+    - [Select SMB dialect bounds](#select-smb-dialect-bounds)
   - [Vendored libsmbclient](#vendored-libsmbclient)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
@@ -85,7 +86,7 @@
 
 ## About Pavão 🦚
 
-Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB version 2 and 3 which exposes type-safe functions to interact with the C libsmbclient.
+Pavão (/pɐ.ˈvɐ̃w̃/) is a Rust client library for SMB versions 1, 2, and 3, where SMB1 support is explicit opt-in via dialect bounds. It exposes type-safe functions to interact with the C libsmbclient.
 
 <p align="center">
   <img src="docs/images/pavao.gif" alt="pavao gif" width="auto" height="150" />
@@ -102,7 +103,7 @@ SMB is natively supported on Windows by the fs module. If you're looking on how 
 ### Add pavao to your Cargo.toml 🦀
 
 ```toml
-pavao = "0.2"
+pavao = "0.3"
 ```
 
 ### Install pavao C dependencies on your system 🖥️ (not vendored)
@@ -170,6 +171,23 @@ rm -rf samba/
 
 ---
 
+### Select SMB dialect bounds
+
+```rust
+use pavao::{SmbClient, SmbCredentials, SmbDialect, SmbOptions};
+
+let client = SmbClient::new(
+    SmbCredentials::default()
+        .server("smb://localhost:445")
+        .share("/temp"),
+    SmbOptions::default()
+        .min_protocol(SmbDialect::Smb202)
+        .max_protocol(SmbDialect::Smb311),
+)?;
+```
+
+Default options keep `smb.conf` negotiation. `SmbDialect::Nt1` (SMB1/CIFS) is deprecated and insecure and must be requested explicitly for both bounds to reach SMB1-only devices. Each client owns its native context, so multiple clients with different credentials and dialect bounds may coexist.
+
 ## Vendored libsmbclient
 
 It is possible to build libsmbclient **statically** when building **pavao**.
@@ -177,11 +195,13 @@ It is possible to build libsmbclient **statically** when building **pavao**.
 To do so it is enough to enable the `vendored` feature for the `pavao` crate in your `Cargo.toml`:
 
 ```toml
-pavao = { version = "0.2", features = ["vendored"] }
+pavao = { version = "0.3", features = ["vendored"] }
 ```
 
 > [!CAUTION]
 > Mind that libsmbclient is a bloated library with tons of dependencies, so the vendored feature will increase the size of the final binary and may not work on all platforms.
+
+Non-vendored builds require libsmbclient ABI 0.5 (Samba 4.10+) or newer.
 
 In order to build and run with the `vendored` feature YOU MUST have the following libraries in your **LD_LIBRARY_PATH**:
 
