@@ -846,6 +846,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionFallbackAfterKerberos(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether automatic anonymous authentication is disabled.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionNoAutoAnonymousLogin(c: *mut SMBCCTX) -> smbc_bool;
     /// Prevents automatic anonymous authentication when enabled.
     ///
     /// # Safety
@@ -1370,6 +1376,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionFallbackAfterKerberos(context, 1);
             assert_eq!(smbc_getOptionFallbackAfterKerberos(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_no_auto_anonymous_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionNoAutoAnonymousLogin(context, 1);
+            assert_eq!(smbc_getOptionNoAutoAnonymousLogin(context), 1);
         });
     }
 }
