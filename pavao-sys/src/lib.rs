@@ -750,6 +750,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionDebugToStderr(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns the file-open sharing mode configured for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionOpenShareMode(c: *mut SMBCCTX) -> smbc_share_mode;
     /// Sets the file-open sharing mode for `c`.
     ///
     /// # Safety
@@ -1244,6 +1250,18 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionDebugToStderr(context, 1);
             assert_eq!(smbc_getOptionDebugToStderr(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_open_share_mode_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionOpenShareMode(context, SMBC_SHAREMODE_DENY_ALL);
+            assert_eq!(
+                smbc_getOptionOpenShareMode(context),
+                SMBC_SHAREMODE_DENY_ALL
+            );
         });
     }
 }
