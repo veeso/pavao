@@ -115,6 +115,9 @@ pub type smbc_smb_encrypt_level = c_int;
 /// Native Boolean represented as a C integer.
 pub type smbc_bool = c_int;
 
+/// Bitmask describing filesystem capabilities reported by `libsmbclient`.
+pub type smbc_vfs_feature = c_uint;
+
 /// Directory-entry type for an SMB workgroup.
 pub const SMBC_WORKGROUP: c_uint = 1;
 /// Directory-entry type for an SMB server.
@@ -175,6 +178,15 @@ pub const SMBC_DOS_MODE_VOLUME_ID: c_int = 0x08;
 pub const SMBC_DOS_MODE_DIRECTORY: c_int = 0x10;
 /// DOS attribute bit for archived files.
 pub const SMBC_DOS_MODE_ARCHIVE: c_int = 0x20;
+
+/// VFS feature indicating a read-only filesystem.
+pub const SMBC_VFS_FEATURE_RDONLY: smbc_vfs_feature = 1 << 0;
+/// VFS feature indicating DFS support.
+pub const SMBC_VFS_FEATURE_DFS: smbc_vfs_feature = 1 << 28;
+/// VFS feature indicating case-insensitive path handling.
+pub const SMBC_VFS_FEATURE_CASE_INSENSITIVE: smbc_vfs_feature = 1 << 29;
+/// VFS feature indicating the absence of Unix CIFS extensions.
+pub const SMBC_VFS_FEATURE_NO_UNIXCIFS: smbc_vfs_feature = 1 << 30;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -921,5 +933,13 @@ mod tests {
         assert_eq!(SMBC_DOS_MODE_VOLUME_ID, 0x08);
         assert_eq!(SMBC_DOS_MODE_DIRECTORY, 0x10);
         assert_eq!(SMBC_DOS_MODE_ARCHIVE, 0x20);
+    }
+
+    #[test]
+    fn exposes_vfs_feature_constants() {
+        assert_eq!(SMBC_VFS_FEATURE_RDONLY, 1 << 0);
+        assert_eq!(SMBC_VFS_FEATURE_DFS, 1 << 28);
+        assert_eq!(SMBC_VFS_FEATURE_CASE_INSENSITIVE, 1 << 29);
+        assert_eq!(SMBC_VFS_FEATURE_NO_UNIXCIFS, 1 << 30);
     }
 }
