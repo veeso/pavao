@@ -2,7 +2,7 @@
 [group('test')]
 test args="":
   cargo test --all-targets {{ args }}
-  just doctest {{ args }}
+  just doctest "{{ args }}"
 
 # Run documentation tests.
 [group('test')]
