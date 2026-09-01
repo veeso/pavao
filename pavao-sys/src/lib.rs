@@ -774,6 +774,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized context and `level` must be supported.
     pub fn smbc_setOptionSmbEncryptionLevel(c: *mut SMBCCTX, level: smbc_smb_encrypt_level);
+    /// Returns whether path matching is case-sensitive for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionCaseSensitive(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls case-sensitive path matching for `c`.
     ///
     /// # Safety
@@ -1280,6 +1286,15 @@ mod tests {
                 smbc_getOptionSmbEncryptionLevel(context),
                 SMBC_ENCRYPTLEVEL_REQUIRE
             );
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_case_sensitive_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionCaseSensitive(context, 1);
+            assert_eq!(smbc_getOptionCaseSensitive(context), 1);
         });
     }
 }
