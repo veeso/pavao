@@ -136,6 +136,28 @@ pub const SMBC_LINK: c_uint = 9;
 /// Smallest file descriptor returned by `libsmbclient`.
 pub const SMBC_BASE_FD: c_int = 10_000;
 
+/// Share mode that denies DOS compatibility access.
+pub const SMBC_SHAREMODE_DENY_DOS: smbc_share_mode = 0;
+/// Share mode that denies all access sharing.
+pub const SMBC_SHAREMODE_DENY_ALL: smbc_share_mode = 1;
+/// Share mode that denies write sharing.
+pub const SMBC_SHAREMODE_DENY_WRITE: smbc_share_mode = 2;
+/// Share mode that denies read sharing.
+pub const SMBC_SHAREMODE_DENY_READ: smbc_share_mode = 3;
+/// Share mode that allows all sharing.
+pub const SMBC_SHAREMODE_DENY_NONE: smbc_share_mode = 4;
+/// Share mode that denies file-control-block sharing.
+pub const SMBC_SHAREMODE_DENY_FCB: smbc_share_mode = 7;
+
+/// Default SMB encryption policy.
+pub const SMBC_ENCRYPTLEVEL_DEFAULT: smbc_smb_encrypt_level = -1;
+/// SMB encryption is disabled.
+pub const SMBC_ENCRYPTLEVEL_NONE: smbc_smb_encrypt_level = 0;
+/// SMB encryption is requested when available.
+pub const SMBC_ENCRYPTLEVEL_REQUEST: smbc_smb_encrypt_level = 1;
+/// SMB encryption is required.
+pub const SMBC_ENCRYPTLEVEL_REQUIRE: smbc_smb_encrypt_level = 2;
+
 #[repr(C)]
 #[derive(Copy)]
 /// Information about a queued SMB print job.
@@ -855,5 +877,19 @@ mod tests {
         assert_eq!(SMBC_FILE, 8);
         assert_eq!(SMBC_LINK, 9);
         assert_eq!(SMBC_BASE_FD, 10000);
+    }
+
+    #[test]
+    fn exposes_share_and_encryption_constants() {
+        assert_eq!(SMBC_SHAREMODE_DENY_DOS, 0);
+        assert_eq!(SMBC_SHAREMODE_DENY_ALL, 1);
+        assert_eq!(SMBC_SHAREMODE_DENY_WRITE, 2);
+        assert_eq!(SMBC_SHAREMODE_DENY_READ, 3);
+        assert_eq!(SMBC_SHAREMODE_DENY_NONE, 4);
+        assert_eq!(SMBC_SHAREMODE_DENY_FCB, 7);
+        assert_eq!(SMBC_ENCRYPTLEVEL_DEFAULT, -1);
+        assert_eq!(SMBC_ENCRYPTLEVEL_NONE, 0);
+        assert_eq!(SMBC_ENCRYPTLEVEL_REQUEST, 1);
+        assert_eq!(SMBC_ENCRYPTLEVEL_REQUIRE, 2);
     }
 }
