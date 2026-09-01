@@ -1,6 +1,6 @@
 //! # Pavão-sys
 //!
-//! [Pavão=sys](https://github.com/veeso/pavao) exposes the C bindings for the **libsmbclient** library to rust.
+//! [Pavão-sys](https://github.com/veeso/pavao) exposes the C bindings for the **libsmbclient** library to rust.
 //!
 //! If you're looking for the Rust SMB library checkout pavao.
 //!

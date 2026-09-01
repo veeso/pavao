@@ -32,6 +32,7 @@ impl PartialEq for SmbError {
             (Self::BadValue, Self::BadValue) => true,
             (Self::Io(io), Self::Io(io2)) => io.kind() == io2.kind(),
             (Self::NulInPath(e), Self::NulInPath(e2)) => e == e2,
+            (Self::Mutex, Self::Mutex) => true,
             (_, _) => false,
         }
     }
@@ -46,5 +47,48 @@ impl From<IoError> for SmbError {
 impl From<NulError> for SmbError {
     fn from(e: NulError) -> Self {
         Self::NulInPath(e)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::CString;
+    use std::io::{self, ErrorKind};
+
+    use super::SmbError;
+
+    #[test]
+    fn mutex_error_equals_itself() {
+        assert_eq!(SmbError::Mutex, SmbError::Mutex);
+    }
+
+    #[test]
+    fn errors_compare_by_variant_and_details() {
+        assert_eq!(SmbError::BadFileDescriptor, SmbError::BadFileDescriptor);
+        assert_eq!(SmbError::BadValue, SmbError::BadValue);
+        assert_eq!(
+            SmbError::Io(io::Error::from(ErrorKind::NotFound)),
+            SmbError::Io(io::Error::from(ErrorKind::NotFound))
+        );
+
+        let left = CString::new("nul\0path").unwrap_err();
+        let right = CString::new("nul\0path").unwrap_err();
+        assert_eq!(SmbError::NulInPath(left), SmbError::NulInPath(right));
+        assert_ne!(SmbError::BadValue, SmbError::BadFileDescriptor);
+    }
+
+    #[test]
+    fn standard_errors_convert_to_smb_errors() {
+        let io_error = io::Error::from(ErrorKind::PermissionDenied);
+        assert_eq!(
+            SmbError::from(io_error),
+            SmbError::Io(io::Error::from(ErrorKind::PermissionDenied))
+        );
+
+        let nul_error = CString::new("nul\0path").unwrap_err();
+        assert_eq!(
+            SmbError::from(nul_error),
+            SmbError::NulInPath(CString::new("nul\0path").unwrap_err())
+        );
     }
 }

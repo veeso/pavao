@@ -1453,7 +1453,8 @@ impl Build {
         }
 
         let inner_dir = build_dir.join("src");
-        fs::create_dir_all(&inner_dir).map_err(|e| format!("{}: {e}", inner_dir.display()))?;
+        fs::create_dir_all(&inner_dir)
+            .map_err(|e| format!("{path}: {e}", path = inner_dir.display()))?;
 
         // get src at `inner_dir`
         clone_samba(&inner_dir)?;
@@ -1533,16 +1534,16 @@ impl Build {
             }
         }
 
-        if os.contains("iossimulator") {
-            if let Some(ref isysr) = ios_isysroot {
-                configure.env(
-                    "CC",
-                    format!(
-                        "xcrun -sdk iphonesimulator cc -isysroot {}",
-                        Path::new(isysr).display()
-                    ),
-                );
-            }
+        if os.contains("iossimulator")
+            && let Some(ref isysr) = ios_isysroot
+        {
+            configure.env(
+                "CC",
+                format!(
+                    "xcrun -sdk iphonesimulator cc -isysroot {isysroot}",
+                    isysroot = Path::new(isysr).display()
+                ),
+            );
         }
 
         configure.current_dir(&inner_dir);
@@ -1583,7 +1584,7 @@ impl Build {
             ))?;
 
             use std::io::Write;
-            writeln!(logfile, "object file: {}", object_file.display()).ok();
+            writeln!(logfile, "object file: {path}", path = object_file.display()).ok();
             build_static.arg(object_file.display().to_string());
         }
 
@@ -1604,7 +1605,7 @@ impl Build {
     }
 
     fn find_object_for_src(src: &Path) -> Option<PathBuf> {
-        let glob = format!("{}.*.o", src.display());
+        let glob = format!("{source}.*.o", source = src.display());
         glob::glob(&glob)
             .ok()?
             .filter_map(|entry| entry.ok())
@@ -1633,7 +1634,7 @@ impl Build {
 
     #[track_caller]
     fn run_command(&self, mut command: Command, desc: &str) -> Result<(), String> {
-        println!("running {:?}", command);
+        println!("running {command:?}");
         let status = command.status();
 
         let verbose_error = match status {
@@ -1791,8 +1792,7 @@ fn clone_samba(p: &Path) -> Result<(), String> {
     let repo_url = "https://git.samba.org/samba.git";
     let repo = git2::Repository::clone(repo_url, p).map_err(|e| format!("cloning samba: {e}"))?;
 
-    // checkout tag "samba-4.22.0"
-    let tag = format!("samba-{}", version());
+    let tag = format!("samba-{version}", version = version());
     let obj = repo
         .revparse_single(&tag)
         .map_err(|e| format!("revparse_single: {e}"))?;
@@ -1814,7 +1814,7 @@ fn clone_samba(p: &Path) -> Result<(), String> {
 fn add_env_includes(cmd: &mut Command, include_paths: &[PathBuf]) -> Result<(), String> {
     let cflags = include_paths
         .iter()
-        .map(|p| format!("-I{}", p.display()))
+        .map(|p| format!("-I{path}", path = p.display()))
         .collect::<Vec<_>>()
         .join(" ");
     cmd.env("CFLAGS", cflags);

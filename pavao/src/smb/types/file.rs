@@ -12,6 +12,7 @@ use pavao_sys::{
 
 use crate::{SmbClient, utils};
 
+#[derive(Debug)]
 pub struct SmbFile<'a> {
     smbc: &'a SmbClient,
     fd: *mut SMBCFILE,
@@ -25,7 +26,11 @@ impl<'a> SmbFile<'a> {
 
 impl Read for SmbFile<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        trace!("reading file to buf [{:?};{}]", buf.as_ptr(), buf.len());
+        trace!(
+            "reading file to buf [{pointer:?};{length}]",
+            pointer = buf.as_ptr(),
+            length = buf.len()
+        );
         let ctx = self
             .smbc
             .ctx()
@@ -43,7 +48,11 @@ impl Read for SmbFile<'_> {
 
 impl Write for SmbFile<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        trace!("writing buf [{:?};{}] to file", buf.as_ptr(), buf.len());
+        trace!(
+            "writing buf [{pointer:?};{length}] to file",
+            pointer = buf.as_ptr(),
+            length = buf.len()
+        );
         let ctx = self
             .smbc
             .ctx()
@@ -66,7 +75,7 @@ impl Write for SmbFile<'_> {
 
 impl Seek for SmbFile<'_> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        trace!("seeking file at {:?}", pos);
+        trace!("seeking file at {pos:?}");
         let ctx = self
             .smbc
             .ctx()
@@ -86,10 +95,10 @@ impl Seek for SmbFile<'_> {
 impl Drop for SmbFile<'_> {
     fn drop(&mut self) {
         trace!("closing file");
-        if let Ok(ctx) = self.smbc.ctx() {
-            if let Ok(close_fn) = self.smbc.get_fn(ctx, smbc_getFunctionClose) {
-                close_fn(ctx, self.fd);
-            }
+        if let Ok(ctx) = self.smbc.ctx()
+            && let Ok(close_fn) = self.smbc.get_fn(ctx, smbc_getFunctionClose)
+        {
+            close_fn(ctx, self.fd);
         }
     }
 }
