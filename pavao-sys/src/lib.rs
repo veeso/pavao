@@ -822,6 +822,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionOneSharePerServer(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether Kerberos authentication is enabled for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionUseKerberos(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls whether Kerberos authentication is attempted for `c`.
     ///
     /// # Safety
@@ -1340,6 +1346,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionOneSharePerServer(context, 1);
             assert_eq!(smbc_getOptionOneSharePerServer(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_use_kerberos_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionUseKerberos(context, 1);
+            assert_eq!(smbc_getOptionUseKerberos(context), 1);
         });
     }
 }
