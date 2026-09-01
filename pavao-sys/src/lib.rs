@@ -726,6 +726,12 @@ unsafe extern "C" {
     /// `c` must be a valid native context pointer. The caller must ensure the pointed-to data
     /// remains valid for any native code that retrieves or uses it.
     pub fn smbc_setOptionUserData(c: *mut SMBCCTX, user_data: *mut c_void);
+    /// Returns whether the password configured for `c` is an NT hash.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionUseNTHash(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1173,6 +1179,14 @@ mod tests {
             smbc_setOptionUserData(context, user_data);
             assert_eq!(smbc_getOptionUserData(context), user_data);
             smbc_setOptionUserData(context, std::ptr::null_mut());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_nt_hash_option() {
+        with_context(|context| unsafe {
+            assert_eq!(smbc_getOptionUseNTHash(context), 0);
         });
     }
 }
