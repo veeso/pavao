@@ -600,6 +600,12 @@ pub type smbc_unlink_print_job_fn =
 
 #[link(name = "smbclient")]
 unsafe extern "C" {
+    /// Returns the native debug verbosity configured for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getDebug(c: *mut SMBCCTX) -> c_int;
     /// Sets the native debug verbosity for `c`.
     ///
     /// # Safety
@@ -1007,5 +1013,14 @@ mod tests {
         assert_eq!(SMBC_NOTIFY_ACTION_ADDED_STREAM, 6);
         assert_eq!(SMBC_NOTIFY_ACTION_REMOVED_STREAM, 7);
         assert_eq!(SMBC_NOTIFY_ACTION_MODIFIED_STREAM, 8);
+    }
+
+    #[test]
+    #[serial]
+    fn gets_debug_level() {
+        with_context(|context| unsafe {
+            smbc_setDebug(context, 7);
+            assert_eq!(smbc_getDebug(context), 7);
+        });
     }
 }
