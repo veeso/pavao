@@ -438,7 +438,7 @@ impl default::Default for _smbc_options {
 }
 
 #[link(name = "smbclient")]
-extern "C" {
+unsafe extern "C" {
     pub fn smbc_setDebug(c: *mut SMBCCTX, debug: c_int);
     pub fn smbc_getNetbiosName(c: *mut SMBCCTX) -> *mut c_char;
     pub fn smbc_setNetbiosName(c: *mut SMBCCTX, netbios_name: *mut c_char);

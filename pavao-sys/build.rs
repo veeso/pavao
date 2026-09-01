@@ -122,7 +122,9 @@ fn add_library(lib: &str, brew_name: &str) {
             }
         }
         Err(_) => {
-            println!("{lib} was not found with pkg_config; trying with LD_LIBRARY_PATH; but you may need to install it manually");
+            println!(
+                "{lib} was not found with pkg_config; trying with LD_LIBRARY_PATH; but you may need to install it manually"
+            );
             // cross-finger and try dylib
             if cfg!(target_arch = "aarch64") {
                 println!("cargo:rustc-link-search=/opt/homebrew/opt/{brew_name}/lib");

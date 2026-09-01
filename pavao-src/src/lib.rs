@@ -1623,7 +1623,7 @@ impl Build {
         if let Some(s) = env::var_os("CARGO_MAKEFLAGS") {
             make.env("MAKEFLAGS", s);
         }
-        if let Some(ref isysr) = ios_isysroot {
+        if let Some(isysr) = ios_isysroot {
             let components: Vec<&str> = isysr.split("/SDKs/").collect();
             make.env("CROSS_TOP", components[0]);
             make.env("CROSS_SDK", components[1]);
@@ -1778,7 +1778,7 @@ impl Build {
                 return Err(format!(
                     "don't know how to configure OpenSSL for {}",
                     target
-                ))
+                ));
             }
         };
 

@@ -13,7 +13,7 @@ use super::{
     AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
     SmbStat, SmbStatVfs,
 };
-use crate::{utils, SmbDirent, SmbError, SmbResult};
+use crate::{SmbDirent, SmbError, SmbResult, utils};
 
 struct SmbContext {
     inner: *mut SMBCCTX,
@@ -418,21 +418,23 @@ impl SmbClient {
 
     /// Setup options in the context
     unsafe fn setup_options(ctx: *mut SMBCCTX, options: SmbOptions) {
-        smbc_setOptionBrowseMaxLmbCount(ctx, options.browser_max_lmb_count);
-        smbc_setOptionCaseSensitive(ctx, options.case_sensitive as i32);
-        smbc_setOptionDebugToStderr(ctx, 0);
-        smbc_setOptionFallbackAfterKerberos(ctx, options.fallback_after_kerberos as i32);
-        smbc_setOptionNoAutoAnonymousLogin(ctx, options.no_auto_anonymous_login as i32);
-        smbc_setOptionOneSharePerServer(ctx, options.one_share_per_server as i32);
-        smbc_setOptionOpenShareMode(ctx, options.open_share_mode.into());
-        smbc_setOptionSmbEncryptionLevel(ctx, options.encryption_level.into());
-        smbc_setOptionUrlEncodeReaddirEntries(ctx, options.url_encode_readdir_entries as i32);
-        smbc_setOptionUseCCache(ctx, options.use_ccache as i32);
-        smbc_setOptionUseKerberos(ctx, options.use_kerberos as i32);
-        #[cfg(feature = "debug")]
-        smbc_setOptionDebugToStderr(ctx, 1 as i32);
-        #[cfg(feature = "debug")]
-        smbc_setDebug(ctx, 10);
+        unsafe {
+            smbc_setOptionBrowseMaxLmbCount(ctx, options.browser_max_lmb_count);
+            smbc_setOptionCaseSensitive(ctx, options.case_sensitive as i32);
+            smbc_setOptionDebugToStderr(ctx, 0);
+            smbc_setOptionFallbackAfterKerberos(ctx, options.fallback_after_kerberos as i32);
+            smbc_setOptionNoAutoAnonymousLogin(ctx, options.no_auto_anonymous_login as i32);
+            smbc_setOptionOneSharePerServer(ctx, options.one_share_per_server as i32);
+            smbc_setOptionOpenShareMode(ctx, options.open_share_mode.into());
+            smbc_setOptionSmbEncryptionLevel(ctx, options.encryption_level.into());
+            smbc_setOptionUrlEncodeReaddirEntries(ctx, options.url_encode_readdir_entries as i32);
+            smbc_setOptionUseCCache(ctx, options.use_ccache as i32);
+            smbc_setOptionUseKerberos(ctx, options.use_kerberos as i32);
+            #[cfg(feature = "debug")]
+            smbc_setOptionDebugToStderr(ctx, 1 as i32);
+            #[cfg(feature = "debug")]
+            smbc_setDebug(ctx, 10);
+        }
     }
 
     /// Auth wrapper passed to `SMBCCTX` to authenticate requests to SMB servers.
@@ -528,7 +530,7 @@ mod test {
 
     use super::*;
     use crate::test::TestCtx;
-    use crate::{mock, SmbDirentType};
+    use crate::{SmbDirentType, mock};
 
     #[test]
     #[serial]
@@ -651,10 +653,11 @@ mod test {
         let ctx = init_ctx();
         create_file_at(&ctx.client, "/cargo-test/abc", "Hello, World!\n");
         create_file_at(&ctx.client, "/cargo-test/def", "Hello, World!\n");
-        assert!(ctx
-            .client
-            .mkdir("/cargo-test/jfk", SmbMode::from(0o755))
-            .is_ok());
+        assert!(
+            ctx.client
+                .mkdir("/cargo-test/jfk", SmbMode::from(0o755))
+                .is_ok()
+        );
         // list dir
         let mut entries = ctx.client.list_dir("/cargo-test").unwrap();
         entries.sort_by(|a, b| a.name().cmp(&b.name()));
@@ -678,10 +681,11 @@ mod test {
         let ctx = init_ctx();
         create_file_at(&ctx.client, "/cargo-test/ghi", "Hello, World!\n");
         create_file_at(&ctx.client, "/cargo-test/jkl", "Hello, World!\n");
-        assert!(ctx
-            .client
-            .mkdir("/cargo-test/hil", SmbMode::from(0o755))
-            .is_ok());
+        assert!(
+            ctx.client
+                .mkdir("/cargo-test/hil", SmbMode::from(0o755))
+                .is_ok()
+        );
         // list dir
         let mut entries = ctx.client.list_dir("/cargo-test").unwrap();
         entries.sort_by(|a, b| a.name().cmp(&b.name()));
@@ -703,10 +707,11 @@ mod test {
     fn should_mkdir() {
         mock::logger();
         let ctx = init_ctx();
-        assert!(ctx
-            .client
-            .mkdir("/cargo-test/testdir", SmbMode::from(0o755))
-            .is_ok());
+        assert!(
+            ctx.client
+                .mkdir("/cargo-test/testdir", SmbMode::from(0o755))
+                .is_ok()
+        );
         finalize_ctx(ctx);
     }
 
@@ -715,10 +720,11 @@ mod test {
     fn should_rmdir() {
         mock::logger();
         let ctx = init_ctx();
-        assert!(ctx
-            .client
-            .mkdir("/cargo-test/testdir", SmbMode::from(0o755))
-            .is_ok());
+        assert!(
+            ctx.client
+                .mkdir("/cargo-test/testdir", SmbMode::from(0o755))
+                .is_ok()
+        );
         // will return err on this server
         let _ = ctx.client.rmdir("/cargo-test/testdir");
         finalize_ctx(ctx);

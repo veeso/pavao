@@ -2,7 +2,7 @@
 //!
 //! provides types for POSIX file mode
 
-use libc::{mode_t, S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFMT, S_IFREG, S_IFSOCK};
+use libc::{S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFMT, S_IFREG, S_IFSOCK, mode_t};
 
 /// Describes the permissions on POSIX system.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

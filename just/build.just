@@ -1,0 +1,20 @@
+# Build every target in debug mode.
+[group('build')]
+build args="":
+  cargo build --all-targets {{ args }}
+
+# Build every target in release mode.
+[group('build')]
+release args="":
+  cargo build --all-targets --release {{ args }}
+
+# Build the transfer example with the bundled Samba source.
+[group('build')]
+vendored args="":
+  cargo build --package pavao --example transfer --features vendored {{ args }}
+
+# Remove Cargo build artifacts.
+[group('build')]
+[confirm("Are you sure you want to clean the build artifacts?")]
+clean:
+  cargo clean

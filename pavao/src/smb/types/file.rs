@@ -6,11 +6,11 @@ use std::io::{self, Read, Seek, SeekFrom, Write};
 
 use libc::{c_int, c_void, mode_t, off_t};
 use pavao_sys::{
-    smbc_getFunctionClose, smbc_getFunctionLseek, smbc_getFunctionRead, smbc_getFunctionWrite,
-    SMBCFILE,
+    SMBCFILE, smbc_getFunctionClose, smbc_getFunctionLseek, smbc_getFunctionRead,
+    smbc_getFunctionWrite,
 };
 
-use crate::{utils, SmbClient};
+use crate::{SmbClient, utils};
 
 pub struct SmbFile<'a> {
     smbc: &'a SmbClient,
