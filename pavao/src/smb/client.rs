@@ -683,6 +683,7 @@ impl Drop for SmbClient {
 #[cfg(test)]
 mod test {
     use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+    use std::thread;
     use std::time::UNIX_EPOCH;
 
     use pretty_assertions::{assert_eq, assert_ne};
@@ -720,6 +721,25 @@ mod test {
                 max: SmbDialect::Nt1
             })
         );
+    }
+
+    #[test]
+    #[serial]
+    fn should_create_clients_from_multiple_threads_without_crashing() {
+        mock::logger();
+        thread::scope(|scope| {
+            for _ in 0..100 {
+                scope.spawn(|| {
+                    SmbClient::new(
+                        SmbCredentials::default()
+                            .server("smb://localhost:1")
+                            .share("/temp"),
+                        SmbOptions::default(),
+                    )
+                    .expect("failed to create client from a worker thread");
+                });
+            }
+        });
     }
 
     #[test]
@@ -855,12 +875,49 @@ mod test {
                 .one_share_per_server(true),
         )
         .expect("failed to create second client");
+        assert_ne!(ctx.client.ctx().unwrap(), second.ctx().unwrap());
         assert!(ctx.client.list_dir("/").is_ok());
         assert!(second.list_dir("/").is_ok());
         // dropping the second client must not invalidate the first
         drop(second);
         assert!(ctx.client.list_dir("/").is_ok());
         finalize_ctx(ctx);
+    }
+
+    #[test]
+    #[serial]
+    fn should_use_distinct_protocol_contexts_without_interference() {
+        mock::logger();
+        let container = SambaContainer::start();
+        let url = format!("smb://localhost:{port}", port = container.get_smb_port());
+        let first = SmbClient::new(
+            SmbCredentials::default()
+                .server(&url)
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default()
+                .min_protocol(SmbDialect::Smb202)
+                .max_protocol(SmbDialect::Smb210),
+        )
+        .expect("failed to create first client");
+        let second = SmbClient::new(
+            SmbCredentials::default()
+                .server(&url)
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default()
+                .min_protocol(SmbDialect::Smb300)
+                .max_protocol(SmbDialect::Smb311),
+        )
+        .expect("failed to create second client");
+
+        assert_ne!(first.ctx().unwrap(), second.ctx().unwrap());
+        assert!(first.list_dir("/").is_ok());
+        assert!(second.list_dir("/").is_ok());
     }
 
     #[test]
