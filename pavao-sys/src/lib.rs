@@ -798,6 +798,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionBrowseMaxLmbCount(c: *mut SMBCCTX, count: c_int);
+    /// Returns whether URL encoding is enabled for directory-entry names in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionUrlEncodeReaddirEntries(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls URL encoding of directory-entry names for `c`.
     ///
     /// # Safety
@@ -1310,6 +1316,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionBrowseMaxLmbCount(context, 9);
             assert_eq!(smbc_getOptionBrowseMaxLmbCount(context), 9);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_url_encode_readdir_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionUrlEncodeReaddirEntries(context, 1);
+            assert_eq!(smbc_getOptionUrlEncodeReaddirEntries(context), 1);
         });
     }
 }
