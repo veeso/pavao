@@ -401,6 +401,20 @@ pub type smbc_write_fn = option::Option<
         count: size_t,
     ) -> ssize_t,
 >;
+/// Callback invoked while `libsmbclient` splices data between two open files.
+pub type smbc_splice_callback_fn =
+    option::Option<extern "C" fn(n: off_t, priv_: *mut c_void) -> c_int>;
+/// Optional callback that splices data between two open remote files.
+pub type smbc_splice_fn = option::Option<
+    extern "C" fn(
+        c: *mut SMBCCTX,
+        srcfile: *mut SMBCFILE,
+        dstfile: *mut SMBCFILE,
+        count: off_t,
+        splice_cb: smbc_splice_callback_fn,
+        priv_: *mut c_void,
+    ) -> off_t,
+>;
 /// Optional callback that removes a remote file.
 ///
 /// `fname` must be a NUL-terminated SMB URL. Returns zero on success or `-1` with `errno` set.
@@ -922,6 +936,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionWrite(c: *mut SMBCCTX) -> smbc_write_fn;
+    /// Returns the file-splicing callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionSplice(c: *mut SMBCCTX) -> smbc_splice_fn;
     /// Returns the file-removal callback installed in `c`.
     ///
     /// # Safety
@@ -1414,6 +1434,14 @@ mod tests {
     fn binds_smbc_get_function_creat() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionCreat(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_splice() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionSplice(context).is_some());
         });
     }
 }
