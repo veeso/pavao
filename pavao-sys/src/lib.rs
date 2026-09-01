@@ -532,6 +532,34 @@ pub type smbc_lseekdir_fn =
 /// success or `-1` with `errno` set on failure.
 pub type smbc_fstatdir_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, dir: *mut SMBCFILE, st: *mut stat) -> c_int>;
+/// A single directory notification action reported by `libsmbclient`.
+#[repr(C)]
+pub struct smbc_notify_callback_action {
+    /// Notification action discriminator.
+    pub action: u32,
+    /// NUL-terminated path associated with the action.
+    pub filename: *const c_char,
+}
+/// Callback invoked with directory notification actions.
+pub type smbc_notify_callback_fn = option::Option<
+    extern "C" fn(
+        actions: *const smbc_notify_callback_action,
+        num_actions: size_t,
+        private_data: *mut c_void,
+    ) -> c_int,
+>;
+/// Optional callback that watches a directory for changes.
+pub type smbc_notify_fn = option::Option<
+    extern "C" fn(
+        c: *mut SMBCCTX,
+        dir: *mut SMBCFILE,
+        recursive: smbc_bool,
+        completion_filter: u32,
+        callback_timeout_ms: c_uint,
+        cb: smbc_notify_callback_fn,
+        private_data: *mut c_void,
+    ) -> c_int,
+>;
 /// Optional callback that changes a remote entry's POSIX mode.
 ///
 /// `fname` must be a NUL-terminated SMB URL. Returns zero on success or `-1` with `errno` set.
@@ -1062,6 +1090,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionFstatdir(c: *mut SMBCCTX) -> smbc_fstatdir_fn;
+    /// Returns the directory-notification callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionNotify(c: *mut SMBCCTX) -> smbc_notify_fn;
     /// Returns the mode-change callback installed in `c`.
     ///
     /// # Safety
@@ -1546,6 +1580,14 @@ mod tests {
     fn binds_smbc_get_function_fstatdir() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionFstatdir(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_notify() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionNotify(context).is_some());
         });
     }
 }
