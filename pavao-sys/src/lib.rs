@@ -695,6 +695,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_getPort(c: *mut SMBCCTX) -> u16;
+    /// Sets the TCP port used by `c`, where zero selects the native default.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_setPort(c: *mut SMBCCTX, port: u16);
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1096,6 +1102,15 @@ mod tests {
     fn gets_default_port() {
         with_context(|context| unsafe {
             assert_eq!(smbc_getPort(context), 0);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn sets_port() {
+        with_context(|context| unsafe {
+            smbc_setPort(context, 445);
+            assert_eq!(smbc_getPort(context), 445);
         });
     }
 }
