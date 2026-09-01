@@ -719,6 +719,13 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_getOptionUserData(c: *mut SMBCCTX) -> *mut c_void;
+    /// Stores an opaque user data pointer in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer. The caller must ensure the pointed-to data
+    /// remains valid for any native code that retrieves or uses it.
+    pub fn smbc_setOptionUserData(c: *mut SMBCCTX, user_data: *mut c_void);
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1154,6 +1161,18 @@ mod tests {
     fn gets_empty_user_data() {
         with_context(|context| unsafe {
             assert!(smbc_getOptionUserData(context).is_null());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn sets_user_data() {
+        with_context(|context| unsafe {
+            let mut value = 42;
+            let user_data = std::ptr::from_mut(&mut value).cast::<c_void>();
+            smbc_setOptionUserData(context, user_data);
+            assert_eq!(smbc_getOptionUserData(context), user_data);
+            smbc_setOptionUserData(context, std::ptr::null_mut());
         });
     }
 }
