@@ -858,6 +858,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionNoAutoAnonymousLogin(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether Kerberos uses the credential cache.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionUseCCache(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls whether Kerberos uses the credential cache.
     ///
     /// # Safety
@@ -1385,6 +1391,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionNoAutoAnonymousLogin(context, 1);
             assert_eq!(smbc_getOptionNoAutoAnonymousLogin(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_use_ccache_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionUseCCache(context, 1);
+            assert_eq!(smbc_getOptionUseCCache(context), 1);
         });
     }
 }
