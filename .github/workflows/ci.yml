@@ -79,6 +79,13 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
           just-version: 1.58.0
+      - name: Verify libsmbclient ABI
+        run: |
+          version="$(pkg-config --modversion smbclient)"
+          printf 'libsmbclient version: %s\n' "$version"
+          pkg-config --atleast-version=0.6.0 smbclient
+      - name: Test ABI 0.6 bindings
+        run: just test "-p pavao-sys --features abi-0-6"
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@1ed6d7be6168f6c9046541087ff549b6bc581fdf # v2.87.2
         with:
@@ -162,5 +169,12 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
           just-version: 1.58.0
+      - name: Verify libsmbclient ABI
+        run: |
+          version="$(pkg-config --modversion smbclient)"
+          printf 'libsmbclient version: %s\n' "$version"
+          pkg-config --atleast-version=0.8.0 smbclient
+      - name: Test ABI 0.8 bindings
+        run: just test "-p pavao-sys --features abi-0-8"
       - name: Build
         run: just build
