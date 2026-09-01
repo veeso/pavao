@@ -188,6 +188,48 @@ pub const SMBC_VFS_FEATURE_CASE_INSENSITIVE: smbc_vfs_feature = 1 << 29;
 /// VFS feature indicating the absence of Unix CIFS extensions.
 pub const SMBC_VFS_FEATURE_NO_UNIXCIFS: smbc_vfs_feature = 1 << 30;
 
+/// Notification filter for file-name changes.
+pub const SMBC_NOTIFY_CHANGE_FILE_NAME: c_uint = 0x001;
+/// Notification filter for directory-name changes.
+pub const SMBC_NOTIFY_CHANGE_DIR_NAME: c_uint = 0x002;
+/// Notification filter for attribute changes.
+pub const SMBC_NOTIFY_CHANGE_ATTRIBUTES: c_uint = 0x004;
+/// Notification filter for size changes.
+pub const SMBC_NOTIFY_CHANGE_SIZE: c_uint = 0x008;
+/// Notification filter for last-write changes.
+pub const SMBC_NOTIFY_CHANGE_LAST_WRITE: c_uint = 0x010;
+/// Notification filter for last-access changes.
+pub const SMBC_NOTIFY_CHANGE_LAST_ACCESS: c_uint = 0x020;
+/// Notification filter for creation-time changes.
+pub const SMBC_NOTIFY_CHANGE_CREATION: c_uint = 0x040;
+/// Notification filter for extended-attribute changes.
+pub const SMBC_NOTIFY_CHANGE_EA: c_uint = 0x080;
+/// Notification filter for security changes.
+pub const SMBC_NOTIFY_CHANGE_SECURITY: c_uint = 0x100;
+/// Notification filter for stream-name changes.
+pub const SMBC_NOTIFY_CHANGE_STREAM_NAME: c_uint = 0x200;
+/// Notification filter for stream-size changes.
+pub const SMBC_NOTIFY_CHANGE_STREAM_SIZE: c_uint = 0x400;
+/// Notification filter for stream-write changes.
+pub const SMBC_NOTIFY_CHANGE_STREAM_WRITE: c_uint = 0x800;
+
+/// Notification action for an added entry.
+pub const SMBC_NOTIFY_ACTION_ADDED: c_uint = 1;
+/// Notification action for a removed entry.
+pub const SMBC_NOTIFY_ACTION_REMOVED: c_uint = 2;
+/// Notification action for a modified entry.
+pub const SMBC_NOTIFY_ACTION_MODIFIED: c_uint = 3;
+/// Notification action for an old entry name.
+pub const SMBC_NOTIFY_ACTION_OLD_NAME: c_uint = 4;
+/// Notification action for a new entry name.
+pub const SMBC_NOTIFY_ACTION_NEW_NAME: c_uint = 5;
+/// Notification action for an added stream.
+pub const SMBC_NOTIFY_ACTION_ADDED_STREAM: c_uint = 6;
+/// Notification action for a removed stream.
+pub const SMBC_NOTIFY_ACTION_REMOVED_STREAM: c_uint = 7;
+/// Notification action for a modified stream.
+pub const SMBC_NOTIFY_ACTION_MODIFIED_STREAM: c_uint = 8;
+
 #[repr(C)]
 #[derive(Copy)]
 /// Information about a queued SMB print job.
@@ -941,5 +983,29 @@ mod tests {
         assert_eq!(SMBC_VFS_FEATURE_DFS, 1 << 28);
         assert_eq!(SMBC_VFS_FEATURE_CASE_INSENSITIVE, 1 << 29);
         assert_eq!(SMBC_VFS_FEATURE_NO_UNIXCIFS, 1 << 30);
+    }
+
+    #[test]
+    fn exposes_notification_constants() {
+        assert_eq!(SMBC_NOTIFY_CHANGE_FILE_NAME, 0x001);
+        assert_eq!(SMBC_NOTIFY_CHANGE_DIR_NAME, 0x002);
+        assert_eq!(SMBC_NOTIFY_CHANGE_ATTRIBUTES, 0x004);
+        assert_eq!(SMBC_NOTIFY_CHANGE_SIZE, 0x008);
+        assert_eq!(SMBC_NOTIFY_CHANGE_LAST_WRITE, 0x010);
+        assert_eq!(SMBC_NOTIFY_CHANGE_LAST_ACCESS, 0x020);
+        assert_eq!(SMBC_NOTIFY_CHANGE_CREATION, 0x040);
+        assert_eq!(SMBC_NOTIFY_CHANGE_EA, 0x080);
+        assert_eq!(SMBC_NOTIFY_CHANGE_SECURITY, 0x100);
+        assert_eq!(SMBC_NOTIFY_CHANGE_STREAM_NAME, 0x200);
+        assert_eq!(SMBC_NOTIFY_CHANGE_STREAM_SIZE, 0x400);
+        assert_eq!(SMBC_NOTIFY_CHANGE_STREAM_WRITE, 0x800);
+        assert_eq!(SMBC_NOTIFY_ACTION_ADDED, 1);
+        assert_eq!(SMBC_NOTIFY_ACTION_REMOVED, 2);
+        assert_eq!(SMBC_NOTIFY_ACTION_MODIFIED, 3);
+        assert_eq!(SMBC_NOTIFY_ACTION_OLD_NAME, 4);
+        assert_eq!(SMBC_NOTIFY_ACTION_NEW_NAME, 5);
+        assert_eq!(SMBC_NOTIFY_ACTION_ADDED_STREAM, 6);
+        assert_eq!(SMBC_NOTIFY_ACTION_REMOVED_STREAM, 7);
+        assert_eq!(SMBC_NOTIFY_ACTION_MODIFIED_STREAM, 8);
     }
 }
