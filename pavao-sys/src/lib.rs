@@ -1026,6 +1026,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionReaddirPlus(c: *mut SMBCCTX) -> smbc_readdirplus_fn;
+    /// Returns the multiple-directory-entry callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionGetdents(c: *mut SMBCCTX) -> smbc_getdents_fn;
     /// Returns the directory-creation callback installed in `c`.
     ///
     /// # Safety
@@ -1490,6 +1496,14 @@ mod tests {
     fn binds_smbc_get_function_ftruncate() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionFtruncate(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_getdents() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionGetdents(context).is_some());
         });
     }
 }
