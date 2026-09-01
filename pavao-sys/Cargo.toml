@@ -30,6 +30,9 @@ vendored = ["dep:cc", "dep:pavao-src"]
 [dependencies]
 libc = { workspace = true }
 
+[dev-dependencies]
+serial_test = { workspace = true }
+
 [build-dependencies]
 cc = { workspace = true, optional = true }
 pavao-src = { workspace = true, optional = true }
