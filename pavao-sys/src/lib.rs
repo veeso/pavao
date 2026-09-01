@@ -732,6 +732,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_getOptionUseNTHash(c: *mut SMBCCTX) -> smbc_bool;
+    /// Marks the password configured for `c` as an NT hash when enabled.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_setOptionUseNTHash(c: *mut SMBCCTX, b: smbc_bool);
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1187,6 +1193,15 @@ mod tests {
     fn gets_nt_hash_option() {
         with_context(|context| unsafe {
             assert_eq!(smbc_getOptionUseNTHash(context), 0);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn sets_nt_hash_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionUseNTHash(context, 1);
+            assert_eq!(smbc_getOptionUseNTHash(context), 1);
         });
     }
 }
