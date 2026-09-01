@@ -30,6 +30,8 @@
 //!
 //! | name       | description                                         | default |
 //! |------------|-----------------------------------------------------|---------|
+//! | `abi-0-6`  | Require libsmbclient ABI 0.6 or newer.             |         |
+//! | `abi-0-8`  | Require libsmbclient ABI 0.8 or newer.             |         |
 //! | `vendored` | Build the bundled Samba source instead of using the system library. |         |
 //!
 

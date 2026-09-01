@@ -11,8 +11,16 @@ fn main() {
 
 #[allow(dead_code)]
 fn build_normal() {
+    let required_version = if cfg!(feature = "abi-0-8") {
+        "0.8.0"
+    } else if cfg!(feature = "abi-0-6") {
+        "0.6.0"
+    } else {
+        "0.5.0"
+    };
+
     match pkg_config::Config::new()
-        .atleast_version("0.5.0")
+        .atleast_version(required_version)
         .probe("smbclient")
     {
         Ok(_) => {
@@ -29,11 +37,11 @@ fn build_normal() {
         }
         Err(e) => {
             println!(
-                "error: libsmbclient ABI 0.5.0 or newer (Samba 4.10+) not found! \
+                "error: libsmbclient ABI {required_version} or newer not found! \
                 Pavão requires `smbc_setOptionProtocols`. Install libsmbclient and its \
                 development files; on macOS run `brew install samba`."
             );
-            panic!("{}", e);
+            panic!("{e}");
         }
     };
 }
