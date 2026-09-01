@@ -1,6 +1,4 @@
-//! # Client
-//!
-//! module which exposes the Smb Client
+//! Safe access to a shared native `libsmbclient` context.
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -20,24 +18,24 @@ struct SmbContext {
 }
 
 impl SmbContext {
-    /// Create a null context
+    /// Creates an empty context holder.
     fn null() -> Self {
         SmbContext {
             inner: ptr::null_mut(),
         }
     }
 
-    /// Set context
+    /// Replaces the stored native context pointer.
     pub fn set(&mut self, ctx: *mut SMBCCTX) {
         self.inner = ctx;
     }
 
-    /// Get context
+    /// Returns the stored native context pointer.
     pub fn get(&self) -> *mut SMBCCTX {
         self.inner
     }
 
-    /// Check if context is null
+    /// Returns whether no native context is stored.
     pub fn is_null(&self) -> bool {
         self.get().is_null()
     }
@@ -51,14 +49,42 @@ lazy_static! {
     static ref SMBCTX: Arc<Mutex<SmbContext>> = Arc::new(Mutex::new(SmbContext::null()));
 }
 
-/// Smb protocol client
+/// A client for accessing files and directories on an SMB share.
+///
+/// Client instances use a process-wide native `libsmbclient` context. The first client created
+/// while that context is active supplies its credentials and options. Dropping any client frees
+/// that shared context, so multiple client instances must not remain alive simultaneously.
 #[derive(Debug)]
 pub struct SmbClient {
     uri: String,
 }
 
 impl SmbClient {
-    /// Initialize a new `SmbClient` with the provided credentials to connect to the remote smb server
+    /// Creates a client for the server and share in `credentials`.
+    ///
+    /// `options` configures the native context when this is the first active client.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if shared state is poisoned or the native context cannot be initialized.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the authentication credential store is poisoned during initialization.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pavao::{SmbClient, SmbCredentials, SmbOptions};
+    ///
+    /// let client = SmbClient::new(
+    ///     SmbCredentials::default()
+    ///         .server("smb://server.example")
+    ///         .share("/documents"),
+    ///     SmbOptions::default(),
+    /// )?;
+    /// # Ok::<(), pavao::SmbError>(())
+    /// ```
     pub fn new(credentials: SmbCredentials, options: SmbOptions) -> SmbResult<Self> {
         let uri = Self::build_uri(credentials.server.as_str(), credentials.share.as_str());
         let smbc = SmbClient { uri };
@@ -90,7 +116,11 @@ impl SmbClient {
         Ok(smbc)
     }
 
-    /// Get netbios name from server
+    /// Returns the NetBIOS name configured on the native context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the context is unavailable or the name cannot be decoded.
     pub fn get_netbios_name(&self) -> SmbResult<String> {
         trace!("getting netbios name");
         unsafe {
@@ -99,7 +129,11 @@ impl SmbClient {
         }
     }
 
-    /// Set netbios name to server
+    /// Sets the NetBIOS name on the native context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `name` contains a NUL byte or the context is unavailable.
     pub fn set_netbios_name<S>(&self, name: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -110,7 +144,11 @@ impl SmbClient {
         Ok(())
     }
 
-    /// Get workgroup name from server
+    /// Returns the workgroup configured on the native context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the context is unavailable or the workgroup cannot be decoded.
     pub fn get_workgroup(&self) -> SmbResult<String> {
         trace!("getting workgroup");
         unsafe {
@@ -119,7 +157,11 @@ impl SmbClient {
         }
     }
 
-    /// Set workgroup name to server
+    /// Sets the workgroup on the native context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `name` contains a NUL byte or the context is unavailable.
     pub fn set_workgroup<S>(&self, name: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -130,7 +172,11 @@ impl SmbClient {
         Ok(())
     }
 
-    /// Get get_user name from server
+    /// Returns the username configured on the native context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the context is unavailable or the username cannot be decoded.
     pub fn get_user(&self) -> SmbResult<String> {
         trace!("getting current username");
         unsafe {
@@ -139,7 +185,11 @@ impl SmbClient {
         }
     }
 
-    /// Set user name to server
+    /// Sets the username on the native context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `name` contains a NUL byte or the context is unavailable.
     pub fn set_user<S>(&self, name: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -153,13 +203,23 @@ impl SmbClient {
         Ok(())
     }
 
-    /// Get timeout from server
+    /// Returns the native context timeout.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the shared context state is poisoned.
     pub fn get_timeout(&self) -> SmbResult<Duration> {
         trace!("getting timeout");
         unsafe { Ok(Duration::from_millis(smbc_getTimeout(self.ctx()?) as u64)) }
     }
 
-    /// Set timeout to server
+    /// Sets the native context timeout.
+    ///
+    /// The duration is passed to `libsmbclient` as milliseconds.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the shared context state is poisoned.
     pub fn set_timeout(&self, timeout: Duration) -> SmbResult<()> {
         trace!(
             "setting timeout to {timeout_ms}ms",
@@ -169,7 +229,11 @@ impl SmbClient {
         Ok(())
     }
 
-    /// Get smbc version
+    /// Returns the linked `libsmbclient` version string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the native version string is null or invalid UTF-8.
     pub fn get_version(&self) -> SmbResult<String> {
         trace!("getting smb version");
         unsafe {
@@ -178,7 +242,11 @@ impl SmbClient {
         }
     }
 
-    /// Unlink file at `path`
+    /// Removes the file at `path` from the configured share.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn unlink<S>(&self, path: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -189,7 +257,11 @@ impl SmbClient {
         utils::to_result_with_ioerror((), unlink_fn(self.ctx()?, path.as_ptr()))
     }
 
-    /// Rename file at `orig_url` to `new_url`
+    /// Renames `orig_url` to `new_url` within the configured share.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn rename<S>(&self, orig_url: S, new_url: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -213,7 +285,14 @@ impl SmbClient {
         )
     }
 
-    /// List content of directory at `path`
+    /// Lists entries in the directory at `path`.
+    ///
+    /// The synthetic `.` and `..` entries are omitted. Entries that cannot be decoded are logged
+    /// and skipped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be opened or required native functions are absent.
     pub fn list_dir<S>(&self, path: S) -> SmbResult<Vec<SmbDirent>>
     where
         S: AsRef<str>,
@@ -259,7 +338,14 @@ impl SmbClient {
         Ok(entries)
     }
 
-    /// List content of directory with metadata at 'path'
+    /// Lists entries and metadata for the directory at `path`.
+    ///
+    /// The synthetic `.` and `..` entries are omitted. Entries that cannot be decoded are logged
+    /// and skipped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be opened or required native functions are absent.
     pub fn list_dirplus<S>(&self, path: S) -> SmbResult<Vec<SmbDirentInfo>>
     where
         S: AsRef<str>,
@@ -313,7 +399,11 @@ impl SmbClient {
         Ok(entries)
     }
 
-    /// Make directory at `p` with provided `mode`
+    /// Creates a directory at `p` with the provided POSIX `mode`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn mkdir<S>(&self, p: S, mode: SmbMode) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -327,7 +417,11 @@ impl SmbClient {
         utils::to_result_with_ioerror((), mkdir_fn(self.ctx()?, p.as_ptr(), mode.into()))
     }
 
-    /// Remove directory at `p`
+    /// Removes the directory at `p`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn rmdir<S>(&self, p: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -338,7 +432,11 @@ impl SmbClient {
         utils::to_result_with_ioerror((), rmdir_fn(self.ctx()?, p.as_ptr()))
     }
 
-    /// Stat filesystem at `p` and return its metadata
+    /// Returns filesystem statistics for the share containing `p`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn statvfs<S>(&self, p: S) -> SmbResult<SmbStatVfs>
     where
         S: AsRef<str>,
@@ -360,7 +458,11 @@ impl SmbClient {
         }
     }
 
-    /// Stat file at `p` and return its metadata
+    /// Returns metadata for the remote entry at `p`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn stat<S>(&self, p: S) -> SmbResult<SmbStat>
     where
         S: AsRef<str>,
@@ -382,7 +484,11 @@ impl SmbClient {
         }
     }
 
-    /// Change file mode for file at `p`
+    /// Changes the POSIX mode of the remote entry at `p`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn chmod<S>(&self, p: S, mode: SmbMode) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -393,7 +499,11 @@ impl SmbClient {
         utils::to_result_with_ioerror((), chmod_fn(self.ctx()?, p.as_ptr(), mode.into()))
     }
 
-    /// Print file at `p` using the `print_queue`
+    /// Submits the remote file at `p` to `print_queue`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or server failures.
     pub fn print<S>(&self, p: S, print_queue: S) -> SmbResult<()>
     where
         S: AsRef<str>,
@@ -414,13 +524,13 @@ impl SmbClient {
 
     // -- internal private
 
-    /// Build connection uri
+    /// Builds the base connection URI.
     fn build_uri(server: &str, share: &str) -> String {
         let separator = if share.starts_with('/') { "" } else { "/" };
         format!("{server}{separator}{share}")
     }
 
-    /// Get file uri
+    /// Builds a URI relative to this client's share.
     fn uri<S>(&self, p: S) -> String
     where
         S: AsRef<str>,
@@ -428,7 +538,7 @@ impl SmbClient {
         format!("{base}{path}", base = self.uri, path = p.as_ref())
     }
 
-    /// Callback getter
+    /// Retrieves a required operation callback from the native context.
     #[expect(
         improper_ctypes_definitions,
         reason = "libsmbclient exposes function-pointer getters through its C ABI"
@@ -441,7 +551,7 @@ impl SmbClient {
         unsafe { get_func(ctx).ok_or_else(|| std::io::Error::from_raw_os_error(libc::EINVAL)) }
     }
 
-    /// Setup options in the context
+    /// Applies client options to a native context.
     unsafe fn setup_options(ctx: *mut SMBCCTX, options: SmbOptions) {
         unsafe {
             smbc_setOptionBrowseMaxLmbCount(ctx, options.browser_max_lmb_count);
@@ -493,14 +603,27 @@ impl SmbClient {
         format!("{ctx:?}")
     }
 
-    /// Get underlying context
+    /// Returns the process-wide native context pointer.
+    ///
+    /// The pointer is owned by Pavão and is invalidated when any [`SmbClient`] is dropped. Callers
+    /// must not free it, retain it across a client drop, or keep multiple clients alive at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the shared context state is poisoned.
     pub fn ctx(&self) -> SmbResult<*mut SMBCCTX> {
         Ok(SMBCTX.lock().map_err(|_| SmbError::Mutex)?.get())
     }
 }
 
 impl<'a> SmbClient {
-    /// Open a file at `P` with provided options
+    /// Opens the remote file at `path` with `options`.
+    ///
+    /// The returned file borrows this client and closes its native handle when dropped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid paths, unavailable native functions, or open failures.
     pub fn open_with<P: AsRef<str>>(
         &'a self,
         path: P,

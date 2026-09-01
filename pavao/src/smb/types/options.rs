@@ -1,10 +1,21 @@
-//! # Options
-//!
-//! module which exposes the smb client options
+//! Connection options for [`SmbClient`](crate::SmbClient).
 
 use pavao_sys::{smbc_share_mode, smbc_smb_encrypt_level};
 
-/// Smb connection options
+/// Optional behavior applied when initializing the shared SMB context.
+///
+/// Use the builder-style methods to override individual defaults.
+///
+/// # Examples
+///
+/// ```
+/// use pavao::{SmbEncryptionLevel, SmbOptions, SmbShareMode};
+///
+/// let options = SmbOptions::default()
+///     .case_sensitive(true)
+///     .encryption_level(SmbEncryptionLevel::Require)
+///     .open_share_mode(SmbShareMode::DenyWrite);
+/// ```
 #[derive(Debug, Clone)]
 pub struct SmbOptions {
     pub(crate) browser_max_lmb_count: i32,
@@ -39,70 +50,90 @@ impl Default for SmbOptions {
 }
 
 impl SmbOptions {
+    /// Sets the maximum number of local master browsers queried when browsing.
     pub fn browser_max_lmb_count(mut self, browser_max_lmb_count: i32) -> Self {
         self.browser_max_lmb_count = browser_max_lmb_count;
         self
     }
 
+    /// Controls whether remote path matching is case-sensitive.
     pub fn case_sensitive(mut self, case_sensitive: bool) -> Self {
         self.case_sensitive = case_sensitive;
         self
     }
 
+    /// Sets the SMB transport encryption policy.
     pub fn encryption_level(mut self, encryption_level: SmbEncryptionLevel) -> Self {
         self.encryption_level = encryption_level;
         self
     }
 
+    /// Controls whether authentication falls back after Kerberos fails.
     pub fn fallback_after_kerberos(mut self, fallback_after_kerberos: bool) -> Self {
         self.fallback_after_kerberos = fallback_after_kerberos;
         self
     }
 
+    /// Controls whether directory listings request full time information.
+    ///
+    /// This option is retained for compatibility but is not currently forwarded to
+    /// `libsmbclient`.
     pub fn full_time_names(mut self, full_time_names: bool) -> Self {
         self.full_time_names = full_time_names;
         self
     }
 
+    /// Prevents automatic anonymous login attempts when authentication fails.
     pub fn no_auto_anonymous_login(mut self, no_auto_anonymous_login: bool) -> Self {
         self.no_auto_anonymous_login = no_auto_anonymous_login;
         self
     }
 
+    /// Restricts each server connection to a single share.
     pub fn one_share_per_server(mut self, one_share_per_server: bool) -> Self {
         self.one_share_per_server = one_share_per_server;
         self
     }
 
+    /// Sets the sharing restrictions applied when files are opened.
     pub fn open_share_mode(mut self, open_share_mode: SmbShareMode) -> Self {
         self.open_share_mode = open_share_mode;
         self
     }
 
+    /// Controls URL encoding of names returned by directory reads.
     pub fn url_encode_readdir_entries(mut self, url_encode_readdir_entries: bool) -> Self {
         self.url_encode_readdir_entries = url_encode_readdir_entries;
         self
     }
 
+    /// Controls whether Kerberos credentials are read from the credential cache.
     pub fn use_ccache(mut self, use_ccache: bool) -> Self {
         self.use_ccache = use_ccache;
         self
     }
 
+    /// Controls whether Kerberos authentication is attempted.
     pub fn use_kerberos(mut self, use_kerberos: bool) -> Self {
         self.use_kerberos = use_kerberos;
         self
     }
 }
 
-/// Share mode option
+/// Sharing restrictions applied when opening a remote file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SmbShareMode {
+    /// Uses DOS compatibility sharing rules.
     DenyDos,
+    /// Denies other readers and writers.
     DenyAll,
+    /// Denies other writers while allowing readers.
     DenyWrite,
+    /// Denies other readers while allowing writers.
     DenyRead,
+    /// Allows other readers and writers.
     DenyNone,
+    /// Uses file-control-block compatibility sharing rules.
     DenyFcb,
 }
 
@@ -119,11 +150,14 @@ impl From<SmbShareMode> for smbc_share_mode {
     }
 }
 
-/// Encryption level option
+/// Encryption policy for SMB transport traffic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SmbEncryptionLevel {
+    /// Does not request transport encryption.
     None,
+    /// Requests encryption but permits an unencrypted connection.
     Request,
+    /// Requires transport encryption.
     Require,
 }
 

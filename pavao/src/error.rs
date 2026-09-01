@@ -1,26 +1,29 @@
-//! # Error
-//!
-//! result and error types
+//! Errors returned by the SMB client.
 
 use std::ffi::NulError;
 use std::io::Error as IoError;
 
 use thiserror::Error;
 
-/// Result returned by the Smb client
+/// A result returned by Pavão operations.
 pub type SmbResult<T> = Result<T, SmbError>;
 
-/// Smb protocol error
+/// An error produced while configuring or using an SMB client.
 #[derive(Debug, Error)]
 pub enum SmbError {
+    /// The server or native library returned an invalid file descriptor.
     #[error("server returned a bad file descriptor")]
     BadFileDescriptor,
+    /// The native library returned a value Pavão cannot interpret.
     #[error("server returned with a bad value")]
     BadValue,
+    /// An operating-system or native I/O operation failed.
     #[error("IO Error: {0}")]
     Io(IoError),
+    /// A path or configuration string contained an interior NUL byte.
     #[error("bad path: {0}")]
     NulInPath(NulError),
+    /// Shared client state could not be accessed because its mutex was poisoned.
     #[error("mutex error")]
     Mutex,
 }

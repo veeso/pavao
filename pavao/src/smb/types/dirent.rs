@@ -1,6 +1,4 @@
-//! # Directory entry
-//!
-//! module which exposes the smb dir entry
+//! Directory entries returned by SMB browse operations.
 
 use libc::c_uint;
 use pavao_sys::smbc_dirent;
@@ -8,27 +6,27 @@ use pavao_sys::smbc_dirent;
 use crate::SmbError;
 use crate::utils::char_ptr_to_string;
 
-/// Smb directory entity
+/// A directory entry returned by [`SmbClient::list_dir`](crate::SmbClient::list_dir).
 #[derive(Debug, Clone)]
 pub struct SmbDirent {
-    /// Directory entity type
+    /// The kind of resource represented by this entry.
     type_: SmbDirentType,
     comment: String,
     name: String,
 }
 
 impl SmbDirent {
-    /// Get directory entity type
+    /// Returns the resource type reported by the SMB server.
     pub fn get_type(&self) -> SmbDirentType {
         self.type_
     }
 
-    /// Get comment
+    /// Returns the server-provided comment for this entry.
     pub fn comment(&self) -> &str {
         self.comment.as_str()
     }
 
-    /// Get name
+    /// Returns the entry name.
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
@@ -48,17 +46,26 @@ impl TryFrom<smbc_dirent> for SmbDirent {
     }
 }
 
-/// Type of directory entity in the smb protocol
+/// The resource category reported for an SMB directory entry.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SmbDirentType {
+    /// A Windows workgroup or domain.
     Workgroup,
+    /// An SMB server.
     Server,
+    /// A shared filesystem.
     FileShare,
+    /// A shared printer.
     PrinterShare,
+    /// A shared communications device.
     CommsShare,
+    /// An inter-process communication share.
     IpcShare,
+    /// A directory.
     Dir,
+    /// A regular file.
     File,
+    /// A symbolic link.
     Link,
 }
 

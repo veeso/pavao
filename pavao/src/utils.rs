@@ -1,6 +1,4 @@
-//! # Utils
-//!
-//! utilities module
+//! Conversions between native SMB values and safe Rust values.
 
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
@@ -13,7 +11,11 @@ use super::SmbResult;
 use crate::SmbError;
 
 #[inline(always)]
-/// Ok(ptr) for non-null ptr or Err(last_os_error) otherwise
+/// Returns `ptr` when non-null, or the last operating-system error otherwise.
+///
+/// # Errors
+///
+/// Returns the current operating-system error when `ptr` is null.
 pub fn result_from_ptr_mut<T>(ptr: *mut T) -> io::Result<*mut T> {
     if ptr.is_null() {
         Err(io::Error::last_os_error())
@@ -62,14 +64,17 @@ pub unsafe fn write_to_cstr(dest: *mut u8, len: usize, src: &str) {
     }
 }
 
-/// Get last os error
+/// Returns the last operating-system error as an [`SmbError`].
 #[inline(always)]
 pub fn last_os_error() -> SmbError {
     SmbError::Io(io::Error::last_os_error())
 }
 
-/// Given the return value of a smb function, it returns the last OS error in case the ret_val is equal to -1
-/// otherwise return `Ok(ok_val)`
+/// Returns `ok_val` unless an SMB function returned its `-1` failure sentinel.
+///
+/// # Errors
+///
+/// Returns the last operating-system error when `ret_val` equals `-1`.
 #[inline(always)]
 pub fn to_result_with_ioerror<T, U>(ok_val: T, ret_val: U) -> SmbResult<T>
 where
@@ -83,7 +88,11 @@ where
 }
 
 #[inline(always)]
-/// to io::Result with Err(last_os_error) if t == -1
+/// Returns `t` unless it is the `-1` failure sentinel.
+///
+/// # Errors
+///
+/// Returns the last operating-system error when `t` equals `-1`.
 pub fn to_result_with_le<T>(t: T) -> io::Result<T>
 where
     T: Eq + From<i8>,
@@ -92,7 +101,11 @@ where
 }
 
 #[inline(always)]
-/// to io::Result with Err(from_raw_os_error(errno)) if t == -1
+/// Returns `t` unless it is `-1`, using `errno` for the failure.
+///
+/// # Errors
+///
+/// Returns the error represented by `errno` when `t` equals `-1`.
 pub fn to_result_with_errno<T>(t: T, errno: c_int) -> io::Result<T>
 where
     T: Eq + From<i8>,
@@ -108,13 +121,25 @@ where
     if t == T::from(-1) { Err(err) } else { Ok(t) }
 }
 
-/// Convert a string to a `CString`
+/// Converts a Rust string to a [`CString`].
+///
+/// # Errors
+///
+/// Returns [`SmbError::NulInPath`] if the string contains an interior NUL byte.
 #[inline(always)]
 pub fn str_to_cstring<P: AsRef<str>>(p: P) -> SmbResult<CString> {
     Ok(CString::new(p.as_ref())?)
 }
 
-/// Convert char pointer to string
+/// Copies a NUL-terminated C string into a Rust [`String`].
+///
+/// # Errors
+///
+/// Returns [`SmbError::BadValue`] if `ptr` is null or the string is not valid UTF-8.
+///
+/// # Safety
+///
+/// Although this function is safe to call, `ptr` must reference a readable NUL-terminated string.
 #[inline(always)]
 pub fn char_ptr_to_string(ptr: *const c_char) -> SmbResult<String> {
     if ptr.is_null() {

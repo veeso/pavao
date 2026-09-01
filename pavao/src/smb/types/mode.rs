@@ -1,10 +1,10 @@
-//! # mode
-//!
-//! provides types for POSIX file mode
+//! POSIX file types and permission bits used by SMB operations.
 
 use libc::{S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFMT, S_IFREG, S_IFSOCK, mode_t};
 
-/// Describes the permissions on POSIX system.
+/// A remote entry's POSIX file type and permission bits.
+///
+/// Construct a mode from its numeric POSIX representation with [`SmbMode::from`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct SmbMode {
     type_: SmbFileType,
@@ -12,52 +12,52 @@ pub struct SmbMode {
 }
 
 impl SmbMode {
-    /// Returns the mode represents a regular file
+    /// Returns whether this mode describes a regular file.
     pub fn is_file(&self) -> bool {
         self.type_ == SmbFileType::RegularFile
     }
 
-    /// Returns the mode represents a directory
+    /// Returns whether this mode describes a directory.
     pub fn is_dir(&self) -> bool {
         self.type_ == SmbFileType::Directory
     }
 
-    /// Returns the mode represents a block
+    /// Returns whether this mode describes a block device.
     pub fn is_block(&self) -> bool {
         self.type_ == SmbFileType::Block
     }
 
-    /// Returns the mode represents a character
+    /// Returns whether this mode describes a character device.
     pub fn is_character(&self) -> bool {
         self.type_ == SmbFileType::Character
     }
 
-    /// Returns the mode represents a pipe
+    /// Returns whether this mode describes a named pipe.
     pub fn is_pipe(&self) -> bool {
         self.type_ == SmbFileType::Pipe
     }
 
-    /// Returns the mode represents a socket
+    /// Returns whether this mode describes a socket.
     pub fn is_socket(&self) -> bool {
         self.type_ == SmbFileType::Socket
     }
 
-    /// Returns the mode represents a symlink
+    /// Returns whether this mode describes a symbolic link.
     pub fn is_symlink(&self) -> bool {
         self.type_ == SmbFileType::Symlink
     }
 
-    /// Returns unix permissions class for `user`
+    /// Returns the owning user's permission bits.
     pub fn user(&self) -> SmbModeClass {
         self.mode.0
     }
 
-    /// Returns unix permissions class for `group`
+    /// Returns the owning group's permission bits.
     pub fn group(&self) -> SmbModeClass {
         self.mode.1
     }
 
-    /// Returns unix permissions class for `others`
+    /// Returns all other users' permission bits.
     pub fn others(&self) -> SmbModeClass {
         self.mode.2
     }
@@ -82,7 +82,7 @@ impl From<mode_t> for SmbMode {
     }
 }
 
-/// Describes the kind of file
+/// Describes the kind of file.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 enum SmbFileType {
     Block,
@@ -110,7 +110,16 @@ impl From<mode_t> for SmbFileType {
     }
 }
 
-/// Describes the permissions on POSIX system for a user class
+/// POSIX read, write, and execute permissions for one user class.
+///
+/// # Examples
+///
+/// ```
+/// use pavao::SmbModeClass;
+///
+/// let permissions = SmbModeClass::new(true, false, true);
+/// assert_eq!(permissions.as_byte(), 0o5);
+/// ```
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct SmbModeClass {
     read: bool,
@@ -119,7 +128,7 @@ pub struct SmbModeClass {
 }
 
 impl SmbModeClass {
-    /// Instantiates a new `SmbMode`
+    /// Creates a permission class from individual access flags.
     pub fn new(read: bool, write: bool, execute: bool) -> Self {
         Self {
             read,
@@ -128,22 +137,22 @@ impl SmbModeClass {
         }
     }
 
-    /// Returns whether user can read
+    /// Returns whether read access is granted.
     pub fn read(&self) -> bool {
         self.read
     }
 
-    /// Returns whether user can write
+    /// Returns whether write access is granted.
     pub fn write(&self) -> bool {
         self.write
     }
 
-    /// Returns whether user can execute
+    /// Returns whether execute access is granted.
     pub fn execute(&self) -> bool {
         self.execute
     }
 
-    /// Convert permission to byte as on POSIX systems
+    /// Returns the three-bit POSIX permission value.
     pub fn as_byte(&self) -> mode_t {
         ((self.read as mode_t) << 2) + ((self.write as mode_t) << 1) + (self.execute as mode_t)
     }

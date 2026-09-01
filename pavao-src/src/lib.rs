@@ -1,10 +1,25 @@
+#![warn(missing_docs)]
+
+//! Builds the bundled Samba source used by Pavão's `vendored` feature.
+//!
+//! This crate is intended for build scripts. It clones the Samba release matching this crate's
+//! version, configures the native build, and produces a static `libsmbclient` archive plus public
+//! headers.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! let artifacts = pavao_src::Build::new().build();
+//! println!("cargo:rustc-link-search=native={}", artifacts.lib_dir.display());
+//! ```
+
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
-/// Source files to compile for libsmbclient
+/// Source files included in the static `libsmbclient` archive.
 const SRC_FILES: &[&str] = &[
     "third_party/heimdal/lib/com_err/compile_et.c",
     "third_party/heimdal/lib/com_err/parse.tab.c",
@@ -1347,11 +1362,15 @@ const TEVENT_SRC: &[&str] = &[
 
 /// Artifacts produced by the build process.
 pub struct Artifacts {
+    /// Directory containing the generated static libraries.
     pub lib_dir: PathBuf,
+    /// Directory containing Samba's generated public headers.
     pub include_dir: PathBuf,
 }
 
-/// samba version
+/// Returns the bundled Samba version.
+///
+/// The build revision suffix from this crate's package version is omitted.
 pub fn version() -> &'static str {
     // get pkg version and remove any `-`
     env!("CARGO_PKG_VERSION")
@@ -1360,7 +1379,9 @@ pub fn version() -> &'static str {
         .expect("Invalid version format")
 }
 
-/// Build configuration
+/// Configuration for compiling the bundled Samba source.
+///
+/// Defaults are read from Cargo's `OUT_DIR`, `TARGET`, and `HOST` environment variables.
 pub struct Build {
     out_dir: Option<PathBuf>,
     target: Option<String>,
@@ -1376,7 +1397,7 @@ impl Default for Build {
 }
 
 impl Build {
-    /// Init a new [`Build`] configuration.
+    /// Creates a build configuration from the current Cargo environment.
     pub fn new() -> Build {
         Build {
             out_dir: env::var_os("OUT_DIR").map(|s| PathBuf::from(s).join("samba-build")),
@@ -1387,26 +1408,33 @@ impl Build {
         }
     }
 
+    /// Sets the directory used for cloned sources and build outputs.
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Build {
         self.out_dir = Some(path.as_ref().to_path_buf());
         self
     }
 
+    /// Sets the target triple passed to the native toolchain.
     pub fn target(&mut self, target: &str) -> &mut Build {
         self.target = Some(target.to_string());
         self
     }
 
+    /// Sets the host triple used to select the native make command.
     pub fn host(&mut self, host: &str) -> &mut Build {
         self.host = Some(host.to_string());
         self
     }
 
+    /// Stores the intended Samba installation prefix.
+    ///
+    /// The current static-library build does not pass this value to Samba's configure script.
     pub fn samba_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Build {
         self.samba_dir = Some(path.as_ref().to_path_buf());
         self
     }
 
+    /// Sets additional GnuTLS include directories used on macOS.
     pub fn gnutls(&mut self, paths: Vec<PathBuf>) -> &mut Build {
         self.gnutls = Some(paths);
         self
@@ -1428,7 +1456,13 @@ impl Build {
         )
     }
 
-    /// Build the samba library. Print cargo:warning=... if the build fails.
+    /// Builds Samba and returns the generated artifacts.
+    ///
+    /// Build failures are emitted as Cargo warnings and written to standard error.
+    ///
+    /// # Process termination
+    ///
+    /// Exits the process with status code 1 if the native build fails.
     pub fn build(&mut self) -> Artifacts {
         match self.try_build() {
             Ok(a) => a,
@@ -1440,7 +1474,15 @@ impl Build {
         }
     }
 
-    /// Try to build the samba library.
+    /// Attempts to build Samba and returns the generated artifacts.
+    ///
+    /// This clones the matching Samba tag, runs its configuration and make steps, and assembles a
+    /// static `libsmbclient` archive.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when required configuration is absent, the target is unsupported, source
+    /// retrieval fails, filesystem operations fail, or a native build command fails.
     pub fn try_build(&mut self) -> Result<Artifacts, String> {
         let target = &self.target.as_ref().ok_or("TARGET dir not set")?[..];
         let host = &self.host.as_ref().ok_or("HOST dir not set")?[..];
@@ -1787,7 +1829,7 @@ impl Build {
     }
 }
 
-/// Clone samba repository to the given path.
+/// Clones the configured Samba release into `p`.
 fn clone_samba(p: &Path) -> Result<(), String> {
     let repo_url = "https://git.samba.org/samba.git";
     let repo = git2::Repository::clone(repo_url, p).map_err(|e| format!("cloning samba: {e}"))?;
