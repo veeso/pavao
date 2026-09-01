@@ -153,7 +153,7 @@ impl SmbClient {
         trace!("setting netbios name to {name}", name = name.as_ref());
         let name = utils::str_to_cstring(name)?;
         self.with_context(|ctx| {
-            unsafe { smbc_setNetbiosName(ctx, name.into_raw()) }
+            unsafe { smbc_setNetbiosName(ctx, name.as_ptr()) }
             Ok(())
         })
     }
@@ -183,7 +183,7 @@ impl SmbClient {
         trace!("configuring workgroup to {name}", name = name.as_ref());
         let name = utils::str_to_cstring(name)?;
         self.with_context(|ctx| {
-            unsafe { smbc_setWorkgroup(ctx, name.into_raw()) }
+            unsafe { smbc_setWorkgroup(ctx, name.as_ptr()) }
             Ok(())
         })
     }
@@ -216,7 +216,7 @@ impl SmbClient {
         );
         let name = utils::str_to_cstring(name)?;
         self.with_context(|ctx| {
-            unsafe { smbc_setUser(ctx, name.into_raw()) }
+            unsafe { smbc_setUser(ctx, name.as_ptr()) }
             Ok(())
         })
     }
@@ -1178,6 +1178,8 @@ mod test {
         let ctx = init_ctx();
         assert!(ctx.client.set_netbios_name("foobar").is_ok());
         assert_eq!(ctx.client.get_netbios_name().unwrap().as_str(), "foobar");
+        assert!(ctx.client.set_netbios_name("updated").is_ok());
+        assert_eq!(ctx.client.get_netbios_name().unwrap().as_str(), "updated");
         finalize_ctx(ctx);
     }
 
@@ -1197,6 +1199,8 @@ mod test {
         let ctx = init_ctx();
         assert!(ctx.client.set_workgroup("foobar").is_ok());
         assert_eq!(ctx.client.get_workgroup().unwrap().as_str(), "foobar");
+        assert!(ctx.client.set_workgroup("updated").is_ok());
+        assert_eq!(ctx.client.get_workgroup().unwrap().as_str(), "updated");
         finalize_ctx(ctx);
     }
 
@@ -1216,6 +1220,8 @@ mod test {
         let ctx = init_ctx();
         assert!(ctx.client.set_user("test").is_ok());
         assert_eq!(ctx.client.get_user().unwrap().as_str(), "test");
+        assert!(ctx.client.set_user("updated").is_ok());
+        assert_eq!(ctx.client.get_user().unwrap().as_str(), "updated");
         finalize_ctx(ctx);
     }
 
