@@ -28,7 +28,11 @@ impl TestCtx {
             reset_protocols();
         }
 
-        let container = SambaContainer::start_with_globals(server_globals);
+        let container = if server_globals.is_empty() {
+            SambaContainer::start()
+        } else {
+            SambaContainer::start_with_globals(server_globals)
+        };
 
         let port = container.get_smb_port();
         let url = format!("smb://localhost:{port}");
@@ -58,8 +62,8 @@ impl TestCtx {
 }
 
 fn reset_protocols() {
-    // The test Samba image defaults to SMB2_02 through SMB3_11; restore those bounds after a
-    // dialect test changes libsmbclient's process-global protocol state.
+    // This test-only raw FFI boundary runs only from serial client tests. The Samba test image
+    // defaults to these bounds, but libsmbclient retains a prior explicit policy after teardown.
     unsafe {
         let ctx = smbc_new_context();
         assert!(!ctx.is_null(), "failed to create protocol reset context");

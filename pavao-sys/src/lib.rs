@@ -9,6 +9,10 @@
 //!
 //! The bindings do not validate pointers, lifetimes, buffer lengths, context state, or native
 //! return values. Callers must uphold the corresponding `libsmbclient` C API contracts.
+//! `libsmbclient` also shares process-wide parameter state, so separate contexts are not sufficient
+//! for thread safety. Callers must serialize all raw native activity with one process-wide lock.
+//! These bindings do not coordinate with Pavão's safe-wrapper lock; raw calls must never race a
+//! Pavão operation or any other raw `libsmbclient` call.
 //!
 //! # Callback contracts
 //!

@@ -36,6 +36,9 @@ pub enum SmbError {
     /// The native library rejected the requested protocol dialect bounds.
     #[error("native library rejected the requested protocol dialects")]
     ProtocolConfiguration,
+    /// Live Pavão clients already use different SMB dialect bounds.
+    #[error("live clients use different protocol dialect bounds")]
+    ProtocolConfigurationConflict,
     /// Shared client state could not be accessed because its mutex was poisoned.
     #[error("mutex error")]
     Mutex,
@@ -56,6 +59,7 @@ impl PartialEq for SmbError {
             (Self::Io(io), Self::Io(io2)) => io.kind() == io2.kind(),
             (Self::NulInPath(e), Self::NulInPath(e2)) => e == e2,
             (Self::ProtocolConfiguration, Self::ProtocolConfiguration) => true,
+            (Self::ProtocolConfigurationConflict, Self::ProtocolConfigurationConflict) => true,
             (Self::Mutex, Self::Mutex) => true,
             (_, _) => false,
         }
@@ -125,6 +129,18 @@ mod tests {
         assert_eq!(
             SmbError::ProtocolConfiguration,
             SmbError::ProtocolConfiguration
+        );
+        assert_eq!(
+            SmbError::ProtocolConfigurationConflict,
+            SmbError::ProtocolConfigurationConflict
+        );
+        assert_ne!(
+            SmbError::ProtocolConfigurationConflict,
+            SmbError::ProtocolConfiguration
+        );
+        assert_eq!(
+            SmbError::ProtocolConfigurationConflict.to_string(),
+            "live clients use different protocol dialect bounds"
         );
         assert_eq!(
             SmbError::InvalidProtocolRange {

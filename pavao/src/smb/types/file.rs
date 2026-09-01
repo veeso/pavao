@@ -16,6 +16,9 @@ use crate::{SmbClient, utils};
 /// `SmbFile` implements [`Read`], [`Write`], and [`Seek`]. Dropping it attempts to close the native
 /// file handle; closure is skipped if the close callback is unavailable.
 /// [`Write::flush`] is a no-op because `libsmbclient` exposes no flush operation.
+///
+/// Every native file operation is serialized with all other Pavão SMB operations in the process.
+/// A blocking read, write, seek, or close delays operations on every client.
 pub struct SmbFile<'a> {
     smbc: &'a SmbClient,
     fd: *mut SMBCFILE,
@@ -34,18 +37,16 @@ impl Read for SmbFile<'_> {
             pointer = buf.as_ptr(),
             length = buf.len()
         );
-        let ctx = self
-            .smbc
-            .ctx()
-            .map_err(|_| std::io::Error::other("smbc context is not initialized, cannot read"))?;
-        let read_fn = self.smbc.get_fn(ctx, smbc_getFunctionRead)?;
-        let bytes_read = utils::to_result_with_le(read_fn(
-            ctx,
-            self.fd,
-            buf.as_mut_ptr() as *mut c_void,
-            buf.len() as _,
-        ))?;
-        Ok(bytes_read as usize)
+        self.smbc.with_context_io(|ctx| {
+            let read_fn = self.smbc.get_fn(ctx, smbc_getFunctionRead)?;
+            let bytes_read = utils::to_result_with_le(read_fn(
+                ctx,
+                self.fd,
+                buf.as_mut_ptr() as *mut c_void,
+                buf.len() as _,
+            ))?;
+            Ok(bytes_read as usize)
+        })
     }
 }
 
@@ -56,18 +57,16 @@ impl Write for SmbFile<'_> {
             pointer = buf.as_ptr(),
             length = buf.len()
         );
-        let ctx = self
-            .smbc
-            .ctx()
-            .map_err(|_| std::io::Error::other("smbc context is not initialized, cannot read"))?;
-        let write_fn = self.smbc.get_fn(ctx, smbc_getFunctionWrite)?;
-        let bytes_wrote = utils::to_result_with_le(write_fn(
-            ctx,
-            self.fd,
-            buf.as_ptr() as *const c_void,
-            buf.len() as _,
-        ))?;
-        Ok(bytes_wrote as usize)
+        self.smbc.with_context_io(|ctx| {
+            let write_fn = self.smbc.get_fn(ctx, smbc_getFunctionWrite)?;
+            let bytes_wrote = utils::to_result_with_le(write_fn(
+                ctx,
+                self.fd,
+                buf.as_ptr() as *const c_void,
+                buf.len() as _,
+            ))?;
+            Ok(bytes_wrote as usize)
+        })
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -79,30 +78,28 @@ impl Write for SmbFile<'_> {
 impl Seek for SmbFile<'_> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         trace!("seeking file at {pos:?}");
-        let ctx = self
-            .smbc
-            .ctx()
-            .map_err(|_| std::io::Error::other("smbc context is not initialized, cannot read"))?;
-        let lseek_fn = self.smbc.get_fn(ctx, smbc_getFunctionLseek)?;
         let (whence, off) = match pos {
             SeekFrom::Start(p) => (libc::SEEK_SET, p as off_t),
             SeekFrom::End(p) => (libc::SEEK_END, p as off_t),
             SeekFrom::Current(p) => (libc::SEEK_CUR, p as off_t),
         };
-        let res = lseek_fn(ctx, self.fd, off, whence);
-        let res = utils::to_result_with_errno(res, libc::EINVAL)?;
-        Ok(res as u64)
+        self.smbc.with_context_io(|ctx| {
+            let lseek_fn = self.smbc.get_fn(ctx, smbc_getFunctionLseek)?;
+            let res = lseek_fn(ctx, self.fd, off, whence);
+            let res = utils::to_result_with_errno(res, libc::EINVAL)?;
+            Ok(res as u64)
+        })
     }
 }
 
 impl Drop for SmbFile<'_> {
     fn drop(&mut self) {
         trace!("closing file");
-        if let Ok(ctx) = self.smbc.ctx()
-            && let Ok(close_fn) = self.smbc.get_fn(ctx, smbc_getFunctionClose)
-        {
+        let _ = self.smbc.with_context_io(|ctx| {
+            let close_fn = self.smbc.get_fn(ctx, smbc_getFunctionClose)?;
             close_fn(ctx, self.fd);
-        }
+            Ok(())
+        });
     }
 }
 

@@ -2,14 +2,14 @@
 
 use std::sync::Mutex;
 use std::time::Duration;
-use std::{mem, ptr};
+use std::{io, mem, ptr};
 
 use libc::{self, c_char, c_int};
 use pavao_sys::{SMBCCTX, *};
 
 use super::{
-    AuthService, SmbCredentials, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions, SmbOptions,
-    SmbStat, SmbStatVfs,
+    AuthService, SmbCredentials, SmbDialect, SmbDirentInfo, SmbFile, SmbMode, SmbOpenOptions,
+    SmbOptions, SmbStat, SmbStatVfs,
 };
 use crate::{SmbDirent, SmbError, SmbResult, utils};
 
@@ -17,29 +17,48 @@ lazy_static! {
     static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
 }
 
-/// Serializes native context creation, initialization, and destruction, because
-/// `libsmbclient` performs unsynchronized global setup in those paths.
-static CTX_LIFECYCLE: Mutex<()> = Mutex::new(());
+type ProtocolPolicy = (Option<SmbDialect>, Option<SmbDialect>);
+
+#[derive(Debug)]
+struct LibsmbclientState {
+    active_clients: usize,
+    protocol_policy: Option<ProtocolPolicy>,
+}
+
+/// Serializes access to native process-wide `libsmbclient` state.
+static LIBSMBCLIENT_STATE: Mutex<LibsmbclientState> = Mutex::new(LibsmbclientState {
+    active_clients: 0,
+    protocol_policy: None,
+});
+
+fn with_libsmbclient_state<T>(
+    operation: impl FnOnce(&mut LibsmbclientState) -> SmbResult<T>,
+) -> SmbResult<T> {
+    let mut state = LIBSMBCLIENT_STATE.lock().map_err(|_| SmbError::Mutex)?;
+    operation(&mut state)
+}
 
 /// A client for accessing files and directories on an SMB share.
 ///
 /// Each client owns a private native `libsmbclient` context carrying its own credentials and
-/// options, so multiple clients with different configurations may be alive at the same time.
-/// Context creation and destruction are serialized process-wide because `libsmbclient`
-/// performs global setup; operations on a single client must not run concurrently from
-/// multiple threads.
+/// options. Pavão serializes all native calls across every client in the process because
+/// `libsmbclient` shares internal global state. Multiple clients may coexist, but their SMB
+/// operations cannot run in parallel, and one blocking operation delays all other Pavão SMB
+/// operations.
+///
+/// All simultaneously live clients must use the exact same minimum and maximum protocol bounds.
+/// This includes default and partial bounds. After every client is dropped, a later client may
+/// select a different policy.
 #[derive(Debug)]
 pub struct SmbClient {
     ctx: *mut SMBCCTX,
     uri: String,
 }
 
-// SAFETY: the client owns its context exclusively and libsmbclient contexts may be used from
-// another thread as long as calls are not issued concurrently; Pavão serializes context
-// lifecycle operations through `CTX_LIFECYCLE`.
+// SAFETY: the client owns its context exclusively, and Pavão serializes all access to
+// libsmbclient process-wide through `LIBSMBCLIENT_STATE`.
 unsafe impl Send for SmbClient {}
-// SAFETY: shared references only read the context pointer value; callers must not issue
-// concurrent operations on the same client, as documented on the struct.
+// SAFETY: shared references may initiate native operations only through the process-wide lock.
 unsafe impl Sync for SmbClient {}
 
 impl SmbClient {
@@ -49,8 +68,8 @@ impl SmbClient {
     ///
     /// # Errors
     ///
-    /// Returns an error if lifecycle state or authentication state is poisoned, or the native
-    /// context cannot be initialized.
+    /// Returns an error if shared state is poisoned, the native context cannot be initialized,
+    /// or live clients use different protocol bounds.
     ///
     /// # Examples
     ///
@@ -72,34 +91,41 @@ impl SmbClient {
             return Err(SmbError::InvalidProtocolRange { min, max });
         }
         let uri = Self::build_uri(credentials.server.as_str(), credentials.share.as_str());
+        let protocol_policy = (options.min_protocol, options.max_protocol);
         trace!("creating context...");
-        let _lifecycle = CTX_LIFECYCLE.lock().map_err(|_| SmbError::Mutex)?;
-        unsafe {
-            let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
-            trace!("configuring client options");
-            smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
-            Self::setup_options(ctx, &options);
-            if let Err(e) = Self::setup_protocols(ctx, &options) {
-                smbc_free_context(ctx, 1_i32);
-                return Err(e);
+        with_libsmbclient_state(|state| {
+            if state.active_clients > 0 && state.protocol_policy != Some(protocol_policy) {
+                return Err(SmbError::ProtocolConfigurationConflict);
             }
-            let smb_ctx = match utils::result_from_ptr_mut(smbc_init_context(ctx)) {
-                Ok(smb_ctx) => smb_ctx,
-                Err(error) => {
+            unsafe {
+                let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
+                trace!("configuring client options");
+                smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
+                Self::setup_options(ctx, &options);
+                if let Err(error) = Self::setup_protocols(ctx, &options) {
                     smbc_free_context(ctx, 1_i32);
-                    return Err(error.into());
+                    return Err(error);
                 }
-            };
-            trace!("context initialized");
-            AUTH_SERVICE
-                .lock()
-                .map_err(|_| {
-                    smbc_free_context(smb_ctx, 1_i32);
-                    SmbError::Mutex
-                })?
-                .insert(Self::auth_service_uuid(smb_ctx), credentials);
-            Ok(SmbClient { ctx: smb_ctx, uri })
-        }
+                let smb_ctx = match utils::result_from_ptr_mut(smbc_init_context(ctx)) {
+                    Ok(smb_ctx) => smb_ctx,
+                    Err(error) => {
+                        smbc_free_context(ctx, 1_i32);
+                        return Err(error.into());
+                    }
+                };
+                trace!("context initialized");
+                AUTH_SERVICE
+                    .lock()
+                    .map_err(|_| {
+                        smbc_free_context(smb_ctx, 1_i32);
+                        SmbError::Mutex
+                    })?
+                    .insert(Self::auth_service_uuid(smb_ctx), credentials);
+                state.active_clients += 1;
+                state.protocol_policy = Some(protocol_policy);
+                Ok(SmbClient { ctx: smb_ctx, uri })
+            }
+        })
     }
 
     /// Returns the NetBIOS name configured on the native context.
@@ -109,10 +135,10 @@ impl SmbClient {
     /// Returns an error if the context is unavailable or the name cannot be decoded.
     pub fn get_netbios_name(&self) -> SmbResult<String> {
         trace!("getting netbios name");
-        unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(self.ctx()?))?;
+        self.with_context(|ctx| unsafe {
+            let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
-        }
+        })
     }
 
     /// Sets the NetBIOS name on the native context.
@@ -126,8 +152,10 @@ impl SmbClient {
     {
         trace!("setting netbios name to {name}", name = name.as_ref());
         let name = utils::str_to_cstring(name)?;
-        unsafe { smbc_setNetbiosName(self.ctx()?, name.into_raw()) }
-        Ok(())
+        self.with_context(|ctx| {
+            unsafe { smbc_setNetbiosName(ctx, name.into_raw()) }
+            Ok(())
+        })
     }
 
     /// Returns the workgroup configured on the native context.
@@ -137,10 +165,10 @@ impl SmbClient {
     /// Returns an error if the context is unavailable or the workgroup cannot be decoded.
     pub fn get_workgroup(&self) -> SmbResult<String> {
         trace!("getting workgroup");
-        unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(self.ctx()?))?;
+        self.with_context(|ctx| unsafe {
+            let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
-        }
+        })
     }
 
     /// Sets the workgroup on the native context.
@@ -154,8 +182,10 @@ impl SmbClient {
     {
         trace!("configuring workgroup to {name}", name = name.as_ref());
         let name = utils::str_to_cstring(name)?;
-        unsafe { smbc_setWorkgroup(self.ctx()?, name.into_raw()) }
-        Ok(())
+        self.with_context(|ctx| {
+            unsafe { smbc_setWorkgroup(ctx, name.into_raw()) }
+            Ok(())
+        })
     }
 
     /// Returns the username configured on the native context.
@@ -165,10 +195,10 @@ impl SmbClient {
     /// Returns an error if the context is unavailable or the username cannot be decoded.
     pub fn get_user(&self) -> SmbResult<String> {
         trace!("getting current username");
-        unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getUser(self.ctx()?))?;
+        self.with_context(|ctx| unsafe {
+            let ptr = utils::result_from_ptr_mut(smbc_getUser(ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
-        }
+        })
     }
 
     /// Sets the username on the native context.
@@ -185,8 +215,10 @@ impl SmbClient {
             name = name.as_ref()
         );
         let name = utils::str_to_cstring(name)?;
-        unsafe { smbc_setUser(self.ctx()?, name.into_raw()) }
-        Ok(())
+        self.with_context(|ctx| {
+            unsafe { smbc_setUser(ctx, name.into_raw()) }
+            Ok(())
+        })
     }
 
     /// Returns the native context timeout.
@@ -196,7 +228,7 @@ impl SmbClient {
     /// Never fails in the current implementation; the [`SmbResult`] is kept for API stability.
     pub fn get_timeout(&self) -> SmbResult<Duration> {
         trace!("getting timeout");
-        unsafe { Ok(Duration::from_millis(smbc_getTimeout(self.ctx()?) as u64)) }
+        self.with_context(|ctx| unsafe { Ok(Duration::from_millis(smbc_getTimeout(ctx) as u64)) })
     }
 
     /// Sets the native context timeout.
@@ -211,8 +243,10 @@ impl SmbClient {
             "setting timeout to {timeout_ms}ms",
             timeout_ms = timeout.as_millis()
         );
-        unsafe { smbc_setTimeout(self.ctx()?, timeout.as_millis() as c_int) }
-        Ok(())
+        self.with_context(|ctx| {
+            unsafe { smbc_setTimeout(ctx, timeout.as_millis() as c_int) }
+            Ok(())
+        })
     }
 
     /// Returns the linked `libsmbclient` version string.
@@ -222,10 +256,10 @@ impl SmbClient {
     /// Returns an error if the native version string is null or invalid UTF-8.
     pub fn get_version(&self) -> SmbResult<String> {
         trace!("getting smb version");
-        unsafe {
+        with_libsmbclient_state(|_| unsafe {
             let ptr = smbc_version();
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
-        }
+        })
     }
 
     /// Removes the file at `path` from the configured share.
@@ -239,8 +273,10 @@ impl SmbClient {
     {
         trace!("unlinking entry at {path}", path = path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        let unlink_fn = self.get_fn(self.ctx()?, smbc_getFunctionUnlink)?;
-        utils::to_result_with_ioerror((), unlink_fn(self.ctx()?, path.as_ptr()))
+        self.with_context(|ctx| {
+            let unlink_fn = self.get_fn(ctx, smbc_getFunctionUnlink)?;
+            utils::to_result_with_ioerror((), unlink_fn(ctx, path.as_ptr()))
+        })
     }
 
     /// Renames `orig_url` to `new_url` within the configured share.
@@ -259,16 +295,13 @@ impl SmbClient {
         );
         let orig_url = utils::str_to_cstring(self.uri(orig_url))?;
         let new_url = utils::str_to_cstring(self.uri(new_url))?;
-        let rename_fn = self.get_fn(self.ctx()?, smbc_getFunctionRename)?;
-        utils::to_result_with_ioerror(
-            (),
-            rename_fn(
-                self.ctx()?,
-                orig_url.as_ptr(),
-                self.ctx()?,
-                new_url.as_ptr(),
-            ),
-        )
+        self.with_context(|ctx| {
+            let rename_fn = self.get_fn(ctx, smbc_getFunctionRename)?;
+            utils::to_result_with_ioerror(
+                (),
+                rename_fn(ctx, orig_url.as_ptr(), ctx, new_url.as_ptr()),
+            )
+        })
     }
 
     /// Lists entries in the directory at `path`.
@@ -285,43 +318,44 @@ impl SmbClient {
     {
         trace!("listing files at {path}", path = path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
-        let opendir_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpendir)?;
-        let fd = opendir_fn(self.ctx()?, path.as_ptr());
-        if fd.is_null() {
-            error!("failed to open directory: returned a bad file descriptor");
-            return Err(SmbError::BadFileDescriptor);
-        }
-        let closedir_fn = self.get_fn(self.ctx()?, smbc_getFunctionClosedir)?;
-        let mut entries = Vec::new();
-        let readdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionReaddir)?;
-        loop {
-            let dirent = readdir_fn(self.ctx()?, fd);
-            if dirent.is_null() {
-                break;
+        self.with_context(|ctx| {
+            let opendir_fn = self.get_fn(ctx, smbc_getFunctionOpendir)?;
+            let fd = opendir_fn(ctx, path.as_ptr());
+            if fd.is_null() {
+                error!("failed to open directory: returned a bad file descriptor");
+                return Err(SmbError::BadFileDescriptor);
             }
-            unsafe {
-                match SmbDirent::try_from(*dirent) {
-                    Ok(dirent)
-                        if dirent.name() != "."
-                            && dirent.name() != ".."
-                            && !dirent.name().is_empty() =>
-                    {
-                        trace!("found dirent: {dirent:?}");
-                        entries.push(dirent);
-                    }
-                    Ok(_) => {
-                        trace!("ignoring '..', '.' directories");
-                    }
-                    Err(e) => {
-                        error!("failed to decode directory entity {dirent:?}: {e}");
+            let closedir_fn = self.get_fn(ctx, smbc_getFunctionClosedir)?;
+            let mut entries = Vec::new();
+            let readdir_fn = self.get_fn(ctx, smbc_getFunctionReaddir)?;
+            loop {
+                let dirent = readdir_fn(ctx, fd);
+                if dirent.is_null() {
+                    break;
+                }
+                unsafe {
+                    match SmbDirent::try_from(*dirent) {
+                        Ok(dirent)
+                            if dirent.name() != "."
+                                && dirent.name() != ".."
+                                && !dirent.name().is_empty() =>
+                        {
+                            trace!("found dirent: {dirent:?}");
+                            entries.push(dirent);
+                        }
+                        Ok(_) => {
+                            trace!("ignoring '..', '.' directories");
+                        }
+                        Err(error) => {
+                            error!("failed to decode directory entity {dirent:?}: {error}");
+                        }
                     }
                 }
             }
-        }
-        trace!("decoded {count} dirents", count = entries.len());
-        // Close directory
-        let _ = closedir_fn(self.ctx()?, fd);
-        Ok(entries)
+            trace!("decoded {count} dirents", count = entries.len());
+            let _ = closedir_fn(ctx, fd);
+            Ok(entries)
+        })
     }
 
     /// Lists entries and metadata for the directory at `path`.
@@ -341,48 +375,49 @@ impl SmbClient {
             path = path.as_ref()
         );
         let path = utils::str_to_cstring(self.uri(path))?;
-        let opendir_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpendir)?;
-        let fd = opendir_fn(self.ctx()?, path.as_ptr());
-        if fd.is_null() {
-            error!("failed to open directory: returned a bad file descriptor");
-            return Err(SmbError::BadFileDescriptor);
-        }
-        let closedir_fn = self.get_fn(self.ctx()?, smbc_getFunctionClosedir)?;
-        let mut entries = Vec::new();
-        let readdirplus_fn = self.get_fn(self.ctx()?, smbc_getFunctionReaddirPlus)?;
-        loop {
-            let direntplus = readdirplus_fn(self.ctx()?, fd);
-            if direntplus.is_null() {
-                break;
+        self.with_context(|ctx| {
+            let opendir_fn = self.get_fn(ctx, smbc_getFunctionOpendir)?;
+            let fd = opendir_fn(ctx, path.as_ptr());
+            if fd.is_null() {
+                error!("failed to open directory: returned a bad file descriptor");
+                return Err(SmbError::BadFileDescriptor);
             }
-            unsafe {
-                match SmbDirentInfo::try_from(*direntplus) {
-                    Ok(direntplus)
-                        if direntplus.name() != "."
-                            && direntplus.name() != ".."
-                            && !direntplus.name().is_empty() =>
-                    {
-                        trace!("found direntplus: {direntplus:?}");
-                        entries.push(direntplus);
-                    }
-                    Ok(_) => {
-                        trace!("ignoring '..', '.' directories");
-                    }
-                    Err(e) => {
-                        error!(
-                            "failed to decode directory entity with metadata {direntplus:?}: {e}"
-                        );
+            let closedir_fn = self.get_fn(ctx, smbc_getFunctionClosedir)?;
+            let mut entries = Vec::new();
+            let readdirplus_fn = self.get_fn(ctx, smbc_getFunctionReaddirPlus)?;
+            loop {
+                let direntplus = readdirplus_fn(ctx, fd);
+                if direntplus.is_null() {
+                    break;
+                }
+                unsafe {
+                    match SmbDirentInfo::try_from(*direntplus) {
+                        Ok(direntplus)
+                            if direntplus.name() != "."
+                                && direntplus.name() != ".."
+                                && !direntplus.name().is_empty() =>
+                        {
+                            trace!("found direntplus: {direntplus:?}");
+                            entries.push(direntplus);
+                        }
+                        Ok(_) => {
+                            trace!("ignoring '..', '.' directories");
+                        }
+                        Err(error) => {
+                            error!(
+                                "failed to decode directory entity with metadata {direntplus:?}: {error}"
+                            );
+                        }
                     }
                 }
             }
-        }
-        trace!(
-            "decoded {count} directory entries with metadata",
-            count = entries.len()
-        );
-        // Close directory
-        let _ = closedir_fn(self.ctx()?, fd);
-        Ok(entries)
+            trace!(
+                "decoded {count} directory entries with metadata",
+                count = entries.len()
+            );
+            let _ = closedir_fn(ctx, fd);
+            Ok(entries)
+        })
     }
 
     /// Creates a directory at `p` with the provided POSIX `mode`.
@@ -399,8 +434,10 @@ impl SmbClient {
             path = p.as_ref()
         );
         let p = utils::str_to_cstring(self.uri(p))?;
-        let mkdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionMkdir)?;
-        utils::to_result_with_ioerror((), mkdir_fn(self.ctx()?, p.as_ptr(), mode.into()))
+        self.with_context(|ctx| {
+            let mkdir_fn = self.get_fn(ctx, smbc_getFunctionMkdir)?;
+            utils::to_result_with_ioerror((), mkdir_fn(ctx, p.as_ptr(), mode.into()))
+        })
     }
 
     /// Removes the directory at `p`.
@@ -414,8 +451,10 @@ impl SmbClient {
     {
         trace!("removing directory at {path}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
-        let rmdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionRmdir)?;
-        utils::to_result_with_ioerror((), rmdir_fn(self.ctx()?, p.as_ptr()))
+        self.with_context(|ctx| {
+            let rmdir_fn = self.get_fn(ctx, smbc_getFunctionRmdir)?;
+            utils::to_result_with_ioerror((), rmdir_fn(ctx, p.as_ptr()))
+        })
     }
 
     /// Returns filesystem statistics for the share containing `p`.
@@ -429,19 +468,17 @@ impl SmbClient {
     {
         trace!("reading filesystem metadata at {path}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
-        unsafe {
+        self.with_context(|ctx| unsafe {
             let mut st: libc::statvfs = mem::zeroed();
-            let statvfs_fn = self.get_fn(self.ctx()?, smbc_getFunctionStatVFS)?;
-            if statvfs_fn(self.ctx()?, p.as_ptr(), &mut st) < 0 {
-                error!(
-                    "failed to stat filesystem: {error}",
-                    error = utils::last_os_error()
-                );
-                Err(utils::last_os_error())
+            let statvfs_fn = self.get_fn(ctx, smbc_getFunctionStatVFS)?;
+            if statvfs_fn(ctx, p.as_ptr(), &mut st) < 0 {
+                let error = utils::last_os_error();
+                error!("failed to stat filesystem: {error}");
+                Err(error)
             } else {
                 Ok(SmbStatVfs::from(st))
             }
-        }
+        })
     }
 
     /// Returns metadata for the remote entry at `p`.
@@ -455,19 +492,17 @@ impl SmbClient {
     {
         trace!("reading file metadata at {path}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
-        unsafe {
+        self.with_context(|ctx| unsafe {
             let mut st: libc::stat = mem::zeroed();
-            let stat_fn = self.get_fn(self.ctx()?, smbc_getFunctionStat)?;
-            if stat_fn(self.ctx()?, p.as_ptr(), &mut st) < 0 {
-                error!(
-                    "failed to stat file: {error}",
-                    error = utils::last_os_error()
-                );
-                Err(utils::last_os_error())
+            let stat_fn = self.get_fn(ctx, smbc_getFunctionStat)?;
+            if stat_fn(ctx, p.as_ptr(), &mut st) < 0 {
+                let error = utils::last_os_error();
+                error!("failed to stat file: {error}");
+                Err(error)
             } else {
                 Ok(SmbStat::from(st))
             }
-        }
+        })
     }
 
     /// Changes the POSIX mode of the remote entry at `p`.
@@ -481,8 +516,10 @@ impl SmbClient {
     {
         trace!("changing mode for {path} with {mode:?}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
-        let chmod_fn = self.get_fn(self.ctx()?, smbc_getFunctionChmod)?;
-        utils::to_result_with_ioerror((), chmod_fn(self.ctx()?, p.as_ptr(), mode.into()))
+        self.with_context(|ctx| {
+            let chmod_fn = self.get_fn(ctx, smbc_getFunctionChmod)?;
+            utils::to_result_with_ioerror((), chmod_fn(ctx, p.as_ptr(), mode.into()))
+        })
     }
 
     /// Submits the remote file at `p` to `print_queue`.
@@ -501,11 +538,10 @@ impl SmbClient {
         );
         let p = utils::str_to_cstring(self.uri(p))?;
         let print_queue = utils::str_to_cstring(self.uri(print_queue))?;
-        let print_fn = self.get_fn(self.ctx()?, smbc_getFunctionPrintFile)?;
-        utils::to_result_with_ioerror(
-            (),
-            print_fn(self.ctx()?, p.as_ptr(), self.ctx()?, print_queue.as_ptr()),
-        )
+        self.with_context(|ctx| {
+            let print_fn = self.get_fn(ctx, smbc_getFunctionPrintFile)?;
+            utils::to_result_with_ioerror((), print_fn(ctx, p.as_ptr(), ctx, print_queue.as_ptr()))
+        })
     }
 
     // -- internal private
@@ -522,6 +558,25 @@ impl SmbClient {
         S: AsRef<str>,
     {
         format!("{base}{path}", base = self.uri, path = p.as_ref())
+    }
+
+    /// Runs one complete native operation while holding the process-wide lock.
+    pub(crate) fn with_context<T>(
+        &self,
+        operation: impl FnOnce(*mut SMBCCTX) -> SmbResult<T>,
+    ) -> SmbResult<T> {
+        with_libsmbclient_state(|_| operation(self.ctx))
+    }
+
+    /// Runs one complete native I/O operation while holding the process-wide lock.
+    pub(crate) fn with_context_io<T>(
+        &self,
+        operation: impl FnOnce(*mut SMBCCTX) -> io::Result<T>,
+    ) -> io::Result<T> {
+        let _state = LIBSMBCLIENT_STATE
+            .lock()
+            .map_err(|_| io::Error::other("libsmbclient state mutex is poisoned"))?;
+        operation(self.ctx)
     }
 
     /// Retrieves a required operation callback from the native context.
@@ -621,7 +676,9 @@ impl SmbClient {
     /// Returns this client's native context pointer.
     ///
     /// The pointer is owned by this client and freed when the client is dropped. Callers must
-    /// not free it or retain it beyond the client's lifetime.
+    /// not free it or retain it beyond the client's lifetime. Direct FFI calls made with this
+    /// pointer bypass Pavão's process-wide synchronization. Such calls must never race a Pavão
+    /// operation or any other raw `libsmbclient` call.
     ///
     /// # Errors
     ///
@@ -645,35 +702,41 @@ impl<'a> SmbClient {
         options: SmbOpenOptions,
     ) -> SmbResult<SmbFile<'a>> {
         trace!("opening {path} with {options:?}", path = path.as_ref());
-        let open_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpen)?;
         let path = utils::str_to_cstring(self.uri(path))?;
-        let fd = utils::result_from_ptr_mut(open_fn(
-            self.ctx()?,
-            path.as_ptr(),
-            options.to_flags(),
-            options.mode,
-        ))?;
-        if (fd as i64) < 0 {
-            error!("got a negative file descriptor");
-            Err(SmbError::BadFileDescriptor)
-        } else {
-            trace!("opened file with file descriptor {fd:?}");
-            Ok(SmbFile::new(self, fd))
-        }
+        self.with_context(|ctx| {
+            let open_fn = self.get_fn(ctx, smbc_getFunctionOpen)?;
+            let fd = utils::result_from_ptr_mut(open_fn(
+                ctx,
+                path.as_ptr(),
+                options.to_flags(),
+                options.mode,
+            ))?;
+            if (fd as i64) < 0 {
+                error!("got a negative file descriptor");
+                Err(SmbError::BadFileDescriptor)
+            } else {
+                trace!("opened file with file descriptor {fd:?}");
+                Ok(SmbFile::new(self, fd))
+            }
+        })
     }
 }
 
 // -- destructor
 impl Drop for SmbClient {
     fn drop(&mut self) {
-        trace!("removing credentials from auth service");
-        if let Ok(mut auth) = AUTH_SERVICE.lock() {
-            auth.remove(Self::auth_service_uuid(self.ctx));
-        }
-        trace!("closing smbclient context");
-        if let Ok(_lifecycle) = CTX_LIFECYCLE.lock() {
+        if let Ok(mut state) = LIBSMBCLIENT_STATE.lock() {
+            trace!("removing credentials from auth service");
+            if let Ok(mut auth) = AUTH_SERVICE.lock() {
+                auth.remove(Self::auth_service_uuid(self.ctx));
+            }
+            trace!("closing smbclient context");
             unsafe {
                 smbc_free_context(self.ctx, 1_i32);
+            }
+            state.active_clients -= 1;
+            if state.active_clients == 0 {
+                state.protocol_policy = None;
             }
         }
         trace!("smbclient context freed");
@@ -683,8 +746,9 @@ impl Drop for SmbClient {
 #[cfg(test)]
 mod test {
     use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
-    use std::time::UNIX_EPOCH;
+    use std::time::{Duration as StdDuration, UNIX_EPOCH};
 
     use pretty_assertions::{assert_eq, assert_ne};
     use serial_test::serial;
@@ -745,9 +809,9 @@ mod test {
     #[test]
     #[serial]
     fn should_verify_native_protocol_option_is_supported() {
-        // raw FFI probe: proves the linked libsmbclient implements smbc_setOptionProtocols
+        // This raw FFI probe stays inside Pavão's process-wide guard.
         mock::logger();
-        unsafe {
+        with_libsmbclient_state(|_| unsafe {
             let ctx = smbc_new_context();
             assert_eq!(ctx.is_null(), false);
             assert_ne!(
@@ -759,7 +823,9 @@ mod test {
                 0
             );
             smbc_free_context(ctx, 1_i32);
-        }
+            Ok(())
+        })
+        .expect("raw protocol option probe failed");
     }
 
     #[test]
@@ -886,13 +952,95 @@ mod test {
 
     #[test]
     #[serial]
-    fn should_use_distinct_protocol_contexts_without_interference() {
-        mock::logger();
-        let container = SambaContainer::start();
-        let url = format!("smb://localhost:{port}", port = container.get_smb_port());
+    fn should_keep_credentials_per_client() {
         let first = SmbClient::new(
             SmbCredentials::default()
-                .server(&url)
+                .server("smb://localhost:1")
+                .share("/temp")
+                .username("alice")
+                .password("first secret")
+                .workgroup("FIRST"),
+            SmbOptions::default(),
+        )
+        .expect("failed to create first client");
+        let second = SmbClient::new(
+            SmbCredentials::default()
+                .server("smb://localhost:1")
+                .share("/temp")
+                .username("bob")
+                .password("second secret")
+                .workgroup("SECOND"),
+            SmbOptions::default(),
+        )
+        .expect("failed to create second client");
+
+        assert_eq!(
+            callback_credentials(&first),
+            ("FIRST".into(), "alice".into(), "first secret".into())
+        );
+        assert_eq!(
+            callback_credentials(&second),
+            ("SECOND".into(), "bob".into(), "second secret".into())
+        );
+        drop(first);
+        assert_eq!(
+            callback_credentials(&second),
+            ("SECOND".into(), "bob".into(), "second secret".into())
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn should_run_repeated_file_and_directory_operations_from_distinct_clients() {
+        mock::logger();
+        let ctx = init_ctx();
+        let second = SmbClient::new(
+            SmbCredentials::default()
+                .server(ctx.server_url())
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default().one_share_per_server(true),
+        )
+        .expect("failed to create second client");
+
+        thread::scope(|scope| {
+            for (client, path, name, content) in [
+                (&ctx.client, "/cargo-test/first", "first", "first client\n"),
+                (&second, "/cargo-test/second", "second", "second client\n"),
+            ] {
+                scope.spawn(move || {
+                    for _ in 0..10 {
+                        create_file_at(client, path, content);
+                        let entries = client
+                            .list_dir("/cargo-test")
+                            .expect("failed to list shared test directory");
+                        assert!(entries.iter().any(|entry| entry.name() == name));
+
+                        let mut file = client
+                            .open_with(path, SmbOpenOptions::default().read(true))
+                            .expect("failed to open concurrent test file");
+                        let mut actual = String::new();
+                        file.read_to_string(&mut actual)
+                            .expect("failed to read concurrent test file");
+                        assert_eq!(actual, content);
+                    }
+                });
+            }
+        });
+
+        drop(second);
+        finalize_ctx(ctx);
+    }
+
+    #[test]
+    #[serial]
+    fn should_reject_distinct_protocol_policies_while_a_client_is_alive() {
+        mock::logger();
+        let first = SmbClient::new(
+            SmbCredentials::default()
+                .server("smb://localhost:1")
                 .share("/temp")
                 .username("test")
                 .password("test")
@@ -904,7 +1052,7 @@ mod test {
         .expect("failed to create first client");
         let second = SmbClient::new(
             SmbCredentials::default()
-                .server(&url)
+                .server("smb://localhost:1")
                 .share("/temp")
                 .username("test")
                 .password("test")
@@ -912,12 +1060,106 @@ mod test {
             SmbOptions::default()
                 .min_protocol(SmbDialect::Smb300)
                 .max_protocol(SmbDialect::Smb311),
-        )
-        .expect("failed to create second client");
+        );
+
+        assert_eq!(second.err(), Some(SmbError::ProtocolConfigurationConflict));
+        drop(first);
+    }
+
+    #[test]
+    #[serial]
+    fn should_allow_identical_protocol_policies() {
+        let options = SmbOptions::default()
+            .min_protocol(SmbDialect::Smb202)
+            .max_protocol(SmbDialect::Smb311);
+        let first = disconnected_client(options.clone()).expect("failed to create first client");
+        let second = disconnected_client(options).expect("failed to create second client");
 
         assert_ne!(first.ctx().unwrap(), second.ctx().unwrap());
-        assert!(first.list_dir("/").is_ok());
-        assert!(second.list_dir("/").is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn should_reject_default_and_explicit_policies_in_either_order() {
+        let explicit = SmbOptions::default()
+            .min_protocol(SmbDialect::Smb202)
+            .max_protocol(SmbDialect::Smb311);
+        let default_client =
+            disconnected_client(SmbOptions::default()).expect("failed to create default client");
+        assert_eq!(
+            disconnected_client(explicit.clone()).err(),
+            Some(SmbError::ProtocolConfigurationConflict)
+        );
+        drop(default_client);
+
+        let explicit_client =
+            disconnected_client(explicit).expect("failed to create explicit client");
+        assert_eq!(
+            disconnected_client(SmbOptions::default()).err(),
+            Some(SmbError::ProtocolConfigurationConflict)
+        );
+        drop(explicit_client);
+    }
+
+    #[test]
+    #[serial]
+    fn should_reject_partial_or_differing_explicit_policies() {
+        let first = disconnected_client(SmbOptions::default().min_protocol(SmbDialect::Smb202))
+            .expect("failed to create first client");
+        assert_eq!(
+            disconnected_client(SmbOptions::default().max_protocol(SmbDialect::Smb311)).err(),
+            Some(SmbError::ProtocolConfigurationConflict)
+        );
+        assert_eq!(
+            disconnected_client(SmbOptions::default().min_protocol(SmbDialect::Smb210)).err(),
+            Some(SmbError::ProtocolConfigurationConflict)
+        );
+        drop(first);
+    }
+
+    #[test]
+    #[serial]
+    fn should_allow_a_different_policy_after_all_clients_are_dropped() {
+        let first = disconnected_client(
+            SmbOptions::default()
+                .min_protocol(SmbDialect::Smb202)
+                .max_protocol(SmbDialect::Smb210),
+        )
+        .expect("failed to create first client");
+        drop(first);
+
+        disconnected_client(
+            SmbOptions::default()
+                .min_protocol(SmbDialect::Smb300)
+                .max_protocol(SmbDialect::Smb311),
+        )
+        .expect("failed to create client with replacement policy");
+    }
+
+    #[test]
+    #[serial]
+    fn should_not_overlap_guarded_closures() {
+        static ACTIVE: AtomicUsize = AtomicUsize::new(0);
+        static MAX_ACTIVE: AtomicUsize = AtomicUsize::new(0);
+
+        ACTIVE.store(0, Ordering::SeqCst);
+        MAX_ACTIVE.store(0, Ordering::SeqCst);
+        thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    with_libsmbclient_state(|_| {
+                        let active = ACTIVE.fetch_add(1, Ordering::SeqCst) + 1;
+                        MAX_ACTIVE.fetch_max(active, Ordering::SeqCst);
+                        thread::sleep(StdDuration::from_millis(10));
+                        ACTIVE.fetch_sub(1, Ordering::SeqCst);
+                        Ok(())
+                    })
+                    .expect("guarded closure failed");
+                });
+            }
+        });
+
+        assert_eq!(MAX_ACTIVE.load(Ordering::SeqCst), 1);
     }
 
     #[test]
@@ -1247,6 +1489,43 @@ mod test {
 
     fn init_ctx() -> TestCtx {
         TestCtx::default()
+    }
+
+    fn disconnected_client(options: SmbOptions) -> SmbResult<SmbClient> {
+        SmbClient::new(
+            SmbCredentials::default()
+                .server("smb://localhost:1")
+                .share("/temp"),
+            options,
+        )
+    }
+
+    fn callback_credentials(client: &SmbClient) -> (String, String, String) {
+        client
+            .with_context(|ctx| {
+                let mut workgroup = [0 as c_char; 32];
+                let mut username = [0 as c_char; 32];
+                let mut password = [0 as c_char; 32];
+                SmbClient::auth_wrapper(
+                    ctx,
+                    c"server".as_ptr(),
+                    c"share".as_ptr(),
+                    workgroup.as_mut_ptr(),
+                    workgroup.len() as c_int,
+                    username.as_mut_ptr(),
+                    username.len() as c_int,
+                    password.as_mut_ptr(),
+                    password.len() as c_int,
+                );
+                unsafe {
+                    Ok((
+                        utils::cstr(workgroup.as_ptr()).into_owned(),
+                        utils::cstr(username.as_ptr()).into_owned(),
+                        utils::cstr(password.as_ptr()).into_owned(),
+                    ))
+                }
+            })
+            .expect("authentication callback failed")
     }
 
     fn finalize_ctx(ctx: TestCtx) {
