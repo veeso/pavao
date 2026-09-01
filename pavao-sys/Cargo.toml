@@ -25,7 +25,9 @@ description = "ffi bindings for libsmbclient. Use Pavao to access Samba shares f
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-vendored = ["dep:cc", "dep:pavao-src"]
+abi-0-6 = []
+abi-0-8 = ["abi-0-6"]
+vendored = ["abi-0-8", "dep:cc", "dep:pavao-src"]
 
 [dependencies]
 libc = { workspace = true }
