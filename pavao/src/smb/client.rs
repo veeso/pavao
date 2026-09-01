@@ -136,7 +136,7 @@ impl SmbClient {
     pub fn get_netbios_name(&self) -> SmbResult<String> {
         trace!("getting netbios name");
         self.with_context(|ctx| unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getNetbiosName(ctx))?;
+            let ptr = utils::result_from_ptr(smbc_getNetbiosName(ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
         })
     }
@@ -166,7 +166,7 @@ impl SmbClient {
     pub fn get_workgroup(&self) -> SmbResult<String> {
         trace!("getting workgroup");
         self.with_context(|ctx| unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getWorkgroup(ctx))?;
+            let ptr = utils::result_from_ptr(smbc_getWorkgroup(ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
         })
     }
@@ -196,7 +196,7 @@ impl SmbClient {
     pub fn get_user(&self) -> SmbResult<String> {
         trace!("getting current username");
         self.with_context(|ctx| unsafe {
-            let ptr = utils::result_from_ptr_mut(smbc_getUser(ctx))?;
+            let ptr = utils::result_from_ptr(smbc_getUser(ctx))?;
             utils::char_ptr_to_string(ptr).map_err(|_| SmbError::BadValue)
         })
     }

@@ -495,39 +495,39 @@ unsafe extern "C" {
     ///
     /// `c` must be valid. The returned pointer must not be modified or freed and is invalidated by
     /// changing the name or destroying `c`.
-    pub fn smbc_getNetbiosName(c: *mut SMBCCTX) -> *mut c_char;
+    pub fn smbc_getNetbiosName(c: *mut SMBCCTX) -> *const c_char;
     /// Sets the NetBIOS name configured for `c`.
     ///
     /// # Safety
     ///
     /// `c` must be valid and `netbios_name` must point to a valid NUL-terminated string.
-    pub fn smbc_setNetbiosName(c: *mut SMBCCTX, netbios_name: *mut c_char);
+    pub fn smbc_setNetbiosName(c: *mut SMBCCTX, netbios_name: *const c_char);
     /// Returns the workgroup configured for `c`.
     ///
     /// # Safety
     ///
     /// `c` must be valid. The returned pointer must not be modified or freed and is invalidated by
     /// changing the workgroup or destroying `c`.
-    pub fn smbc_getWorkgroup(c: *mut SMBCCTX) -> *mut c_char;
+    pub fn smbc_getWorkgroup(c: *mut SMBCCTX) -> *const c_char;
     /// Sets the workgroup configured for `c`.
     ///
     /// # Safety
     ///
     /// `c` must be valid and `workgroup` must point to a valid NUL-terminated string.
-    pub fn smbc_setWorkgroup(c: *mut SMBCCTX, workgroup: *mut c_char);
+    pub fn smbc_setWorkgroup(c: *mut SMBCCTX, workgroup: *const c_char);
     /// Returns the username configured for `c`.
     ///
     /// # Safety
     ///
     /// `c` must be valid. The returned pointer must not be modified or freed and is invalidated by
     /// changing the username or destroying `c`.
-    pub fn smbc_getUser(c: *mut SMBCCTX) -> *mut c_char;
+    pub fn smbc_getUser(c: *mut SMBCCTX) -> *const c_char;
     /// Sets the username configured for `c`.
     ///
     /// # Safety
     ///
     /// `c` must be valid and `user` must point to a valid NUL-terminated string.
-    pub fn smbc_setUser(c: *mut SMBCCTX, user: *mut c_char);
+    pub fn smbc_setUser(c: *mut SMBCCTX, user: *const c_char);
     /// Returns the timeout configured for `c` in milliseconds.
     ///
     /// # Safety
@@ -808,5 +808,15 @@ mod tests {
     fn uses_signed_encryption_level() {
         let level: smbc_smb_encrypt_level = -1;
         assert_eq!(level, -1);
+    }
+
+    #[test]
+    fn uses_const_context_string_pointers() {
+        let _: unsafe extern "C" fn(*mut SMBCCTX) -> *const c_char = smbc_getNetbiosName;
+        let _: unsafe extern "C" fn(*mut SMBCCTX, *const c_char) = smbc_setNetbiosName;
+        let _: unsafe extern "C" fn(*mut SMBCCTX) -> *const c_char = smbc_getWorkgroup;
+        let _: unsafe extern "C" fn(*mut SMBCCTX, *const c_char) = smbc_setWorkgroup;
+        let _: unsafe extern "C" fn(*mut SMBCCTX) -> *const c_char = smbc_getUser;
+        let _: unsafe extern "C" fn(*mut SMBCCTX, *const c_char) = smbc_setUser;
     }
 }
