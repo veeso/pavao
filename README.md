@@ -13,7 +13,6 @@
   <a href="https://docs.rs/pavao" target="_blank">Documentation</a>
 </p>
 <p align="center">Developed by <a href="https://veeso.me/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.2.16 (04/12/2025)</p>
 
 <p align="center">
   <a href="https://opensource.org/license/MIT"
@@ -23,35 +22,30 @@
   /></a>
   <a href="https://github.com/veeso/pavao/stargazers"
     ><img
-      src="https://img.shields.io/github/stars/veeso/pavao.svg?style=plain"
+      src="https://img.shields.io/github/stars/veeso/pavao.svg?style=plain&logo=github"
       alt="Repo stars"
   /></a>
   <a href="https://crates.io/crates/pavao"
     ><img
-      src="https://img.shields.io/crates/d/pavao.svg"
+      src="https://img.shields.io/crates/d/pavao.svg?logo=rust"
       alt="Downloads counter"
   /></a>
   <a href="https://crates.io/crates/pavao"
     ><img
-      src="https://img.shields.io/crates/v/pavao.svg"
+      src="https://img.shields.io/crates/v/pavao.svg?logo=rust"
       alt="Latest version"
-  /></a>
-  <a href="https://ko-fi.com/veeso">
-    <img
-      src="https://img.shields.io/badge/donate-ko--fi-red"
-      alt="Ko-fi"
   /></a>
 </p>
 <p align="center">
   <a href="https://github.com/veeso/pavao/actions"
     ><img
-      src="https://github.com/veeso/pavao/workflows/Linux/badge.svg"
-      alt="Linux CI"
+      src="https://github.com/veeso/pavao/actions/workflows/ci.yml/badge.svg"
+      alt="CI"
   /></a>
   <a href="https://github.com/veeso/pavao/actions"
     ><img
-      src="https://github.com/veeso/pavao/workflows/MacOS/badge.svg"
-      alt="MacOS CI"
+      src="https://github.com/veeso/pavao/actions/workflows/zizmor.yml/badge.svg"
+      alt="zizmor"
   /></a>
   <a href="https://coveralls.io/github/veeso/pavao"
     ><img
@@ -83,7 +77,6 @@
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
   - [Documentation 📚](#documentation-)
-  - [Support the developer ☕](#support-the-developer-)
   - [Contributing and issues 🤝🏻](#contributing-and-issues-)
   - [Changelog ⏳](#changelog-)
   - [License 📃](#license-)
@@ -218,7 +211,6 @@ let mut file = client.open_with("/abc/test.txt", SmbOpenOptions::default().read(
 drop(file);
 // disconnect from server
 drop(client);
-
 ```
 
 ### Run examples
@@ -242,17 +234,6 @@ cargo run --example transfer -- -i <file_on_local> -o <file_to_write> -u <userna
 ## Documentation 📚
 
 The developer documentation can be found on Rust Docs at <https://docs.rs/pavao>
-
----
-
-## Support the developer ☕
-
-If you like Pavão and you're grateful for the work I've done, please consider a little donation 🥳
-
-You can make a donation with one of these platforms:
-
-[![ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/veeso)
-[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.me/chrisintin)
 
 ---
 

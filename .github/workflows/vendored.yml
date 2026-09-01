@@ -1,53 +1,71 @@
 name: Vendored
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
+    name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os:
-          - macos-latest # Apple Silicon
+          - macos-latest
           - ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies (ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt update && sudo apt install -y \
-          make \
-          libgit2-dev \
-          build-essential \
-          pkg-config \
-          libbsd-dev \
-          libcap-dev \
-          libcups2-dev \
-          libgnutls28-dev \
-          libicu-dev \
-          libjansson-dev \
-          libkeyutils-dev \
-          libldap2-dev \
-          zlib1g-dev \
-          libpam0g-dev \
-          libacl1-dev \
-          libarchive-dev \
-          flex \
-          bison \
-          libntirpc-dev \
-          libtracker-sparql-3.0-dev \
-          libglib2.0-dev \
-          libdbus-1-dev \
-          libsasl2-dev \
-          libunistring-dev \
-          cpanminus;
-          sudo cpanm Parse::Yapp::Driver;
-      - name: Install dependencies (macOS)
-        if: ${{ runner.os == 'macOS' }}
+          sudo apt-get update
+          sudo apt-get install --yes \
+            bison \
+            build-essential \
+            cpanminus \
+            flex \
+            libacl1-dev \
+            libarchive-dev \
+            libbsd-dev \
+            libcap-dev \
+            libcups2-dev \
+            libdbus-1-dev \
+            libglib2.0-dev \
+            libgnutls28-dev \
+            libicu-dev \
+            libjansson-dev \
+            libkeyutils-dev \
+            libldap2-dev \
+            libgit2-dev \
+            libntirpc-dev \
+            libpam0g-dev \
+            libsasl2-dev \
+            libtracker-sparql-3.0-dev \
+            libunistring-dev \
+            make \
+            pkg-config \
+            zlib1g-dev
+          sudo cpanm Parse::Yapp::Driver
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
         run: |
           brew update
           brew install \
@@ -84,9 +102,17 @@ jobs:
           brew link --force openldap
           brew link --force zlib
           cpanm Parse::Yapp::Driver
-      - name: Setup Rust toolchain and cache
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Cache Cargo data
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          components: rustfmt, clippy
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-vendored-${{ hashFiles('**/Cargo.toml', 'rust-toolchain.toml') }}
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: 1.58.0
       - name: Build
-        run: cargo build --example transfer --features vendored
+        run: just vendored

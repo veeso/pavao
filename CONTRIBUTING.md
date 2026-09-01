@@ -79,10 +79,10 @@ Let's make it simple and clear:
 1. Open a PR with an **appropriate label** (e.g. bug, enhancement, ...).
 2. Write a **properly documentation** for your software compliant with **rustdoc** standard.
 3. Write tests for your code
-4. Check your code with `cargo clippy`.
-5. Check if the CI for your commits reports three-green.
+4. Run `just check` locally.
+5. Check that every CI job passes for your commits.
 6. Report changes to the PR you opened, writing a report of what you changed and what you have introduced.
-7. Update the `CHANGELOG.md` file with details of changes to the application. In changelog report changes under a chapter called `PR{PULL_REQUEST_NUMBER}` (e.g. PR12).
+7. Use Conventional Commits so the release tooling can generate the changelog.
 8. Assign a maintainer to the reviewers.
 9. Request maintainers to merge your changes.
 
@@ -99,5 +99,5 @@ In addition to the process described for the PRs, I've also decided to introduce
 
 ---
 
-Thank you for any contribution!  
+Thank you for any contribution!\
 Christian Visintin

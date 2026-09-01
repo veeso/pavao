@@ -23,31 +23,33 @@ pub fn result_from_ptr_mut<T>(ptr: *mut T) -> io::Result<*mut T> {
 }
 
 pub unsafe fn cstr<'a, T>(p: *const T) -> Cow<'a, str> {
-    CStr::from_ptr(p as *const c_char).to_string_lossy()
+    unsafe { CStr::from_ptr(p as *const c_char).to_string_lossy() }
 }
 
 pub unsafe fn write_to_cstr(dest: *mut u8, len: usize, src: &str) {
     // just to ensure that it can be interpreted as c string
-    *dest.add(len - 1) = 0u8;
-    trace!("orig: {:?}", cstr(dest));
+    unsafe {
+        *dest.add(len - 1) = 0u8;
+        trace!("orig: {:?}", cstr(dest));
 
-    let mut buf = slice::from_raw_parts_mut(dest, len);
-    let mut idx = buf.write(src.as_bytes()).unwrap();
+        let mut buf = slice::from_raw_parts_mut(dest, len);
+        let mut idx = buf.write(src.as_bytes()).unwrap();
 
-    if idx == len {
-        idx -= 1;
+        if idx == len {
+            idx -= 1;
+        }
+        buf = slice::from_raw_parts_mut(dest, len);
+        buf[idx] = 0u8;
+
+        trace!(
+            "write to [{:p};{}] from [{:p},{}]: {:?}",
+            dest,
+            len,
+            src.as_ptr(),
+            src.len(),
+            cstr(dest)
+        );
     }
-    buf = slice::from_raw_parts_mut(dest, len);
-    buf[idx] = 0u8;
-
-    trace!(
-        "write to [{:p};{}] from [{:p},{}]: {:?}",
-        dest,
-        len,
-        src.as_ptr(),
-        src.len(),
-        cstr(dest)
-    );
 }
 
 /// Get last os error
@@ -81,11 +83,7 @@ pub fn to_result_with_errno<T: Eq + From<i8>>(t: T, errno: c_int) -> io::Result<
 
 #[inline(always)]
 fn to_result_with_error<T: Eq + From<i8>>(t: T, err: io::Error) -> io::Result<T> {
-    if t == T::from(-1) {
-        Err(err)
-    } else {
-        Ok(t)
-    }
+    if t == T::from(-1) { Err(err) } else { Ok(t) }
 }
 
 /// Convert a string to a `CString`

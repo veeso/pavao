@@ -1,12 +1,31 @@
 [workspace]
 members = ["pavao", "pavao-src", "pavao-sys"]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 version = "0.2.16"
-edition = "2021"
-rust-version = "1.78.0"
 authors = ["Christian Visintin <christian.visintin@veeso.dev>"]
-repository = "https://github.com/veeso/pavao"
-license = "MIT"
+edition = "2024"
 keywords = ["smb", "samba", "network-protocol", "smb2", "smb3"]
+license = "MIT"
+repository = "https://github.com/veeso/pavao"
+rust-version = "1.88.0"
+
+[workspace.dependencies]
+argh = "0.1"
+cc = "1"
+cfg_aliases = "0.2"
+env_logger = "0.11"
+git2 = "0.21"
+glob = "0.3"
+lazy_static = "1"
+libc = "0.2"
+log = "0.4"
+pavao-src = { version = "4.22.0-4", path = "pavao-src" }
+pavao-sys = { version = "0.2.12", path = "pavao-sys" }
+pkg-config = "0.3"
+pretty_assertions = "1"
+rpassword = "7"
+serial_test = "3"
+testcontainers = { version = "0.28", default-features = false }
+thiserror = "2"

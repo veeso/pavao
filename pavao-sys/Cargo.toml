@@ -2,11 +2,10 @@
 name = "pavao-sys"
 version = { workspace = true }
 authors = { workspace = true }
-edition = { workspace = true }
-rust-version = { workspace = true }
+build = "build.rs"
 categories = ["external-ffi-bindings", "network-programming"]
-description = "ffi bindings for libsmbclient. Use Pavao to access Samba shares from Rust."
 documentation = "https://docs.rs/pavao-sys"
+edition = { workspace = true }
 homepage = "https://github.com/veeso/pavao"
 include = [
   "src/**/*",
@@ -18,25 +17,24 @@ include = [
 ]
 keywords = { workspace = true }
 license = { workspace = true }
+links = "smbclient"
 readme = "../README.md"
 repository = { workspace = true }
-
-# C build
-build = "build.rs"
-links = "smbclient"
+rust-version = { workspace = true }
+description = "ffi bindings for libsmbclient. Use Pavao to access Samba shares from Rust."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+vendored = ["dep:cc", "dep:pavao-src"]
+
+[dependencies]
+libc = { workspace = true }
+
+[build-dependencies]
+cc = { workspace = true, optional = true }
+pavao-src = { workspace = true, optional = true }
+pkg-config = { workspace = true }
 
 [lib]
 name = "pavao_sys"
 path = "src/lib.rs"
-
-[dependencies]
-libc = "^0.2"
-
-[build-dependencies]
-cc = { version = "1", optional = true }
-pavao-src = { version = "4.22.0-4", path = "../pavao-src", optional = true }
-pkg-config = "0.3"
-
-[features]
-vendored = ["dep:cc", "dep:pavao-src"]

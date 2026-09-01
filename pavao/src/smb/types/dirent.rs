@@ -5,8 +5,8 @@
 use libc::c_uint;
 use pavao_sys::smbc_dirent;
 
-use crate::utils::char_ptr_to_string;
 use crate::SmbError;
+use crate::utils::char_ptr_to_string;
 
 /// Smb directory entity
 #[derive(Debug, Clone)]
