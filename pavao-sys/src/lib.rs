@@ -904,6 +904,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionOpen(c: *mut SMBCCTX) -> smbc_open_fn;
+    /// Returns the file-creation callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionCreat(c: *mut SMBCCTX) -> smbc_creat_fn;
     /// Returns the file-read callback installed in `c`.
     ///
     /// # Safety
@@ -1400,6 +1406,14 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionUseCCache(context, 1);
             assert_eq!(smbc_getOptionUseCCache(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_creat() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionCreat(context).is_some());
         });
     }
 }
