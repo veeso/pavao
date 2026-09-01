@@ -923,6 +923,15 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionUseCCache(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether POSIX extensions are enabled for `c`.
+    ///
+    /// Available when the `abi-0-8` feature is enabled.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    #[cfg(feature = "abi-0-8")]
+    pub fn smbc_getOptionPosixExtensions(c: *mut SMBCCTX) -> smbc_bool;
     /// Sets the minimum and maximum SMB dialects offered during protocol negotiation.
     ///
     /// Each protocol name must be a NUL-terminated Samba dialect string such as `NT1`,
@@ -1723,6 +1732,16 @@ mod tests {
     fn binds_smbc_get_function_unlink_print_job() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionUnlinkPrintJob(context).is_some());
+        });
+    }
+
+    #[cfg(feature = "abi-0-8")]
+    #[test]
+    #[serial]
+    fn gets_posix_extensions_option() {
+        with_context(|context| unsafe {
+            let value = smbc_getOptionPosixExtensions(context);
+            assert!(value == 0 || value == 1);
         });
     }
 }
