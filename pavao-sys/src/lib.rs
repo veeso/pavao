@@ -306,6 +306,9 @@ pub type smbc_get_auth_data_with_context_fn = Option<
         pwlen: c_int,
     ),
 >;
+/// Optional callback that receives native `libsmbclient` diagnostics.
+pub type smbc_debug_callback_fn =
+    option::Option<extern "C" fn(private_ptr: *mut c_void, level: c_int, message: *const c_char)>;
 /// Optional callback invoked for each print job in a queue.
 ///
 /// `i` is borrowed for the callback invocation and must not be retained or freed.
@@ -621,6 +624,20 @@ unsafe extern "C" {
     /// `c` must be a valid native context pointer, and `file` must point to a valid
     /// NUL-terminated path.
     pub fn smbc_setConfiguration(c: *mut SMBCCTX, file: *const c_char) -> c_int;
+    /// Installs the callback used for native diagnostic messages.
+    ///
+    /// The callback is process-global despite being selected through `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer. If `callback` is `Some`, its function and
+    /// `private_ptr` must remain valid whenever `libsmbclient` invokes it, and the callback must
+    /// not unwind across the C ABI boundary.
+    pub fn smbc_setLogCallback(
+        c: *mut SMBCCTX,
+        private_ptr: *mut c_void,
+        callback: smbc_debug_callback_fn,
+    );
     /// Returns the NetBIOS name configured for `c`.
     ///
     /// # Safety
@@ -907,6 +924,9 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use libc::{c_char, c_int, c_void};
     use serial_test::serial;
 
     use super::*;
@@ -918,6 +938,10 @@ mod tests {
             test(context);
             assert_eq!(smbc_free_context(context, 1), 0);
         }
+    }
+
+    extern "C" fn record_log(private_ptr: *mut c_void, _level: c_int, _message: *const c_char) {
+        unsafe { (&*private_ptr.cast::<AtomicBool>()).store(true, Ordering::SeqCst) };
     }
 
     #[test]
@@ -1041,6 +1065,23 @@ mod tests {
                 smbc_setConfiguration(context, c"/definitely/missing/pavao.conf".as_ptr()),
                 -1
             );
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn sets_log_callback() {
+        with_context(|context| unsafe {
+            let called = AtomicBool::new(false);
+            let private_ptr = std::ptr::from_ref(&called).cast_mut().cast::<c_void>();
+            smbc_setDebug(context, 1);
+            smbc_setLogCallback(context, private_ptr, Some(record_log));
+            assert_eq!(
+                smbc_setConfiguration(context, c"/definitely/missing/pavao.conf".as_ptr()),
+                -1
+            );
+            smbc_setLogCallback(context, std::ptr::null_mut(), None);
+            assert!(called.load(Ordering::SeqCst));
         });
     }
 }
