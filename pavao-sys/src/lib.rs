@@ -953,6 +953,18 @@ unsafe extern "C" {
     /// `context` must be a live pointer allocated by [`smbc_new_context`] and not previously freed.
     /// It remains owned by the caller when this function returns one.
     pub fn smbc_free_context(context: *mut SMBCCTX, shutdown_ctx: c_int) -> c_int;
+    /// Sets fallback credentials used by `libsmbclient` for DFS referrals.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer. Each non-null credential pointer must refer to
+    /// a valid NUL-terminated string for the duration of the call.
+    pub fn smbc_set_credentials_with_fallback(
+        c: *mut SMBCCTX,
+        workgroup: *const c_char,
+        user: *const c_char,
+        password: *const c_char,
+    );
     /// Initializes a newly allocated native SMB context.
     ///
     /// Returns `context` on success. Returns null and sets `errno` to `EBADF`, `ENOMEM`, or `ENOENT`
@@ -1202,6 +1214,21 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionUseNTHash(context, 1);
             assert_eq!(smbc_getOptionUseNTHash(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn sets_fallback_credentials() {
+        with_context(|context| unsafe {
+            smbc_setUser(context, c"user".as_ptr());
+            smbc_set_credentials_with_fallback(
+                context,
+                c"WORKGROUP".as_ptr(),
+                c"user".as_ptr(),
+                c"password".as_ptr(),
+            );
+            assert_eq!(std::ffi::CStr::from_ptr(smbc_getUser(context)), c"user");
         });
     }
 }
