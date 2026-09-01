@@ -17,7 +17,7 @@ description = "Source of libsmbclient and logic to build vendored pavao."
 
 [dependencies]
 cc = { workspace = true }
-git2 = { workspace = true }
+git2 = { workspace = true, features = ["https"] }
 glob = { workspace = true }
 
 [lib]
