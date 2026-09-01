@@ -1,6 +1,6 @@
-//! Safe access to a shared native `libsmbclient` context.
+//! Safe access to per-client native `libsmbclient` contexts.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 use std::{mem, ptr};
 
@@ -13,64 +13,44 @@ use super::{
 };
 use crate::{SmbDirent, SmbError, SmbResult, utils};
 
-struct SmbContext {
-    inner: *mut SMBCCTX,
-}
-
-impl SmbContext {
-    /// Creates an empty context holder.
-    fn null() -> Self {
-        SmbContext {
-            inner: ptr::null_mut(),
-        }
-    }
-
-    /// Replaces the stored native context pointer.
-    pub fn set(&mut self, ctx: *mut SMBCCTX) {
-        self.inner = ctx;
-    }
-
-    /// Returns the stored native context pointer.
-    pub fn get(&self) -> *mut SMBCCTX {
-        self.inner
-    }
-
-    /// Returns whether no native context is stored.
-    pub fn is_null(&self) -> bool {
-        self.get().is_null()
-    }
-}
-
-unsafe impl Sync for SmbContext {}
-unsafe impl Send for SmbContext {}
-
 lazy_static! {
     static ref AUTH_SERVICE: Mutex<AuthService> = Mutex::new(AuthService::default());
-    static ref SMBCTX: Arc<Mutex<SmbContext>> = Arc::new(Mutex::new(SmbContext::null()));
 }
+
+/// Serializes native context creation, initialization, and destruction, because
+/// `libsmbclient` performs unsynchronized global setup in those paths.
+static CTX_LIFECYCLE: Mutex<()> = Mutex::new(());
 
 /// A client for accessing files and directories on an SMB share.
 ///
-/// Client instances use a process-wide native `libsmbclient` context. The first client created
-/// while that context is active supplies its credentials and options. Dropping any client frees
-/// that shared context, so multiple client instances must not remain alive simultaneously.
+/// Each client owns a private native `libsmbclient` context carrying its own credentials and
+/// options, so multiple clients with different configurations may be alive at the same time.
+/// Context creation and destruction are serialized process-wide because `libsmbclient`
+/// performs global setup; operations on a single client must not run concurrently from
+/// multiple threads.
 #[derive(Debug)]
 pub struct SmbClient {
+    ctx: *mut SMBCCTX,
     uri: String,
 }
+
+// SAFETY: the client owns its context exclusively and libsmbclient contexts may be used from
+// another thread as long as calls are not issued concurrently; Pavão serializes context
+// lifecycle operations through `CTX_LIFECYCLE`.
+unsafe impl Send for SmbClient {}
+// SAFETY: shared references only read the context pointer value; callers must not issue
+// concurrent operations on the same client, as documented on the struct.
+unsafe impl Sync for SmbClient {}
 
 impl SmbClient {
     /// Creates a client for the server and share in `credentials`.
     ///
-    /// `options` configures the native context when this is the first active client.
+    /// The client owns a private native context configured with `options`.
     ///
     /// # Errors
     ///
-    /// Returns an error if shared state is poisoned or the native context cannot be initialized.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the authentication credential store is poisoned during initialization.
+    /// Returns an error if lifecycle state or authentication state is poisoned, or the native
+    /// context cannot be initialized.
     ///
     /// # Examples
     ///
@@ -86,34 +66,40 @@ impl SmbClient {
     /// # Ok::<(), pavao::SmbError>(())
     /// ```
     pub fn new(credentials: SmbCredentials, options: SmbOptions) -> SmbResult<Self> {
-        let uri = Self::build_uri(credentials.server.as_str(), credentials.share.as_str());
-        let smbc = SmbClient { uri };
-        // insert credentials
-        trace!("creating context...");
-        // get current context
-        let mut ctx_lock = SMBCTX.lock().map_err(|_| SmbError::Mutex)?;
-        // if context is null, create a new one
-        if ctx_lock.is_null() {
-            unsafe {
-                let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
-                // set options
-                trace!("configuring client options");
-                smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
-                Self::setup_options(ctx, options);
-
-                // set ctx
-                let smb_ctx = utils::result_from_ptr_mut(smbc_init_context(ctx))?;
-                trace!("context initialized");
-                AUTH_SERVICE
-                    .lock()
-                    .unwrap()
-                    .insert(Self::auth_service_uuid(smb_ctx), credentials);
-
-                // set context
-                ctx_lock.set(smb_ctx);
-            }
+        if let (Some(min), Some(max)) = (options.min_protocol, options.max_protocol)
+            && min > max
+        {
+            return Err(SmbError::InvalidProtocolRange { min, max });
         }
-        Ok(smbc)
+        let uri = Self::build_uri(credentials.server.as_str(), credentials.share.as_str());
+        trace!("creating context...");
+        let _lifecycle = CTX_LIFECYCLE.lock().map_err(|_| SmbError::Mutex)?;
+        unsafe {
+            let ctx = utils::result_from_ptr_mut(smbc_new_context())?;
+            trace!("configuring client options");
+            smbc_setFunctionAuthDataWithContext(ctx, Some(Self::auth_wrapper));
+            Self::setup_options(ctx, &options);
+            if let Err(e) = Self::setup_protocols(ctx, &options) {
+                smbc_free_context(ctx, 1_i32);
+                return Err(e);
+            }
+            let smb_ctx = match utils::result_from_ptr_mut(smbc_init_context(ctx)) {
+                Ok(smb_ctx) => smb_ctx,
+                Err(error) => {
+                    smbc_free_context(ctx, 1_i32);
+                    return Err(error.into());
+                }
+            };
+            trace!("context initialized");
+            AUTH_SERVICE
+                .lock()
+                .map_err(|_| {
+                    smbc_free_context(smb_ctx, 1_i32);
+                    SmbError::Mutex
+                })?
+                .insert(Self::auth_service_uuid(smb_ctx), credentials);
+            Ok(SmbClient { ctx: smb_ctx, uri })
+        }
     }
 
     /// Returns the NetBIOS name configured on the native context.
@@ -207,7 +193,7 @@ impl SmbClient {
     ///
     /// # Errors
     ///
-    /// Returns an error if the shared context state is poisoned.
+    /// Never fails in the current implementation; the [`SmbResult`] is kept for API stability.
     pub fn get_timeout(&self) -> SmbResult<Duration> {
         trace!("getting timeout");
         unsafe { Ok(Duration::from_millis(smbc_getTimeout(self.ctx()?) as u64)) }
@@ -219,7 +205,7 @@ impl SmbClient {
     ///
     /// # Errors
     ///
-    /// Returns an error if the shared context state is poisoned.
+    /// Never fails in the current implementation; the [`SmbResult`] is kept for API stability.
     pub fn set_timeout(&self, timeout: Duration) -> SmbResult<()> {
         trace!(
             "setting timeout to {timeout_ms}ms",
@@ -552,7 +538,7 @@ impl SmbClient {
     }
 
     /// Applies client options to a native context.
-    unsafe fn setup_options(ctx: *mut SMBCCTX, options: SmbOptions) {
+    unsafe fn setup_options(ctx: *mut SMBCCTX, options: &SmbOptions) {
         unsafe {
             smbc_setOptionBrowseMaxLmbCount(ctx, options.browser_max_lmb_count);
             smbc_setOptionCaseSensitive(ctx, options.case_sensitive as i32);
@@ -569,6 +555,35 @@ impl SmbClient {
             smbc_setOptionDebugToStderr(ctx, 1 as i32);
             #[cfg(feature = "debug")]
             smbc_setDebug(ctx, 10);
+        }
+    }
+
+    /// Applies the requested protocol dialect bounds to an uninitialized native context.
+    ///
+    /// Passing no bounds keeps the `smb.conf` protocol configuration untouched.
+    unsafe fn setup_protocols(ctx: *mut SMBCCTX, options: &SmbOptions) -> SmbResult<()> {
+        if options.min_protocol.is_none() && options.max_protocol.is_none() {
+            return Ok(());
+        }
+        trace!(
+            "restricting protocols to [{min:?}, {max:?}]",
+            min = options.min_protocol,
+            max = options.max_protocol
+        );
+        let min = options.min_protocol.map(|dialect| dialect.as_cstr());
+        let max = options.max_protocol.map(|dialect| dialect.as_cstr());
+        let ok = unsafe {
+            smbc_setOptionProtocols(
+                ctx,
+                min.map_or(ptr::null(), |name| name.as_ptr()),
+                max.map_or(ptr::null(), |name| name.as_ptr()),
+            )
+        };
+        if ok == 0 {
+            error!("libsmbclient rejected the requested protocol dialects");
+            Err(SmbError::ProtocolConfiguration)
+        } else {
+            Ok(())
         }
     }
 
@@ -603,16 +618,16 @@ impl SmbClient {
         format!("{ctx:?}")
     }
 
-    /// Returns the process-wide native context pointer.
+    /// Returns this client's native context pointer.
     ///
-    /// The pointer is owned by Pavão and is invalidated when any [`SmbClient`] is dropped. Callers
-    /// must not free it, retain it across a client drop, or keep multiple clients alive at once.
+    /// The pointer is owned by this client and freed when the client is dropped. Callers must
+    /// not free it or retain it beyond the client's lifetime.
     ///
     /// # Errors
     ///
-    /// Returns an error if the shared context state is poisoned.
+    /// Never fails in the current implementation; the [`SmbResult`] is kept for API stability.
     pub fn ctx(&self) -> SmbResult<*mut SMBCCTX> {
-        Ok(SMBCTX.lock().map_err(|_| SmbError::Mutex)?.get())
+        Ok(self.ctx)
     }
 }
 
@@ -651,17 +666,14 @@ impl<'a> SmbClient {
 // -- destructor
 impl Drop for SmbClient {
     fn drop(&mut self) {
-        trace!("removing uri from auth service");
-        unsafe {
-            if let Ok(mut context) = SMBCTX.lock() {
-                AUTH_SERVICE
-                    .lock()
-                    .unwrap()
-                    .remove(Self::auth_service_uuid(context.get()));
-                trace!("closing smbclient");
-                smbc_free_context(context.get(), 1_i32);
-                // set context to null
-                context.set(ptr::null_mut());
+        trace!("removing credentials from auth service");
+        if let Ok(mut auth) = AUTH_SERVICE.lock() {
+            auth.remove(Self::auth_service_uuid(self.ctx));
+        }
+        trace!("closing smbclient context");
+        if let Ok(_lifecycle) = CTX_LIFECYCLE.lock() {
+            unsafe {
+                smbc_free_context(self.ctx, 1_i32);
             }
         }
         trace!("smbclient context freed");
@@ -677,8 +689,8 @@ mod test {
     use serial_test::serial;
 
     use super::*;
-    use crate::test::TestCtx;
-    use crate::{SmbDirentType, mock};
+    use crate::test::{SambaContainer, TestCtx};
+    use crate::{SmbDialect, SmbDirentType, mock};
 
     #[test]
     #[serial]
@@ -686,6 +698,168 @@ mod test {
         mock::logger();
         let ctx = init_ctx();
         assert_eq!(ctx.client.ctx().unwrap().is_null(), false);
+        finalize_ctx(ctx);
+    }
+
+    #[test]
+    #[serial]
+    fn should_reject_inverted_protocol_range_without_creating_a_context() {
+        mock::logger();
+        let result = SmbClient::new(
+            SmbCredentials::default()
+                .server("smb://localhost:1")
+                .share("/temp"),
+            SmbOptions::default()
+                .min_protocol(SmbDialect::Smb311)
+                .max_protocol(SmbDialect::Nt1),
+        );
+        assert_eq!(
+            result.err(),
+            Some(SmbError::InvalidProtocolRange {
+                min: SmbDialect::Smb311,
+                max: SmbDialect::Nt1
+            })
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn should_verify_native_protocol_option_is_supported() {
+        // raw FFI probe: proves the linked libsmbclient implements smbc_setOptionProtocols
+        mock::logger();
+        unsafe {
+            let ctx = smbc_new_context();
+            assert_eq!(ctx.is_null(), false);
+            assert_ne!(
+                smbc_setOptionProtocols(ctx, c"SMB2_02".as_ptr(), c"SMB3_11".as_ptr()),
+                0
+            );
+            assert_eq!(
+                smbc_setOptionProtocols(ctx, c"BOGUS_PROTO".as_ptr(), ptr::null()),
+                0
+            );
+            smbc_free_context(ctx, 1_i32);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn should_connect_with_smb2_bounds() {
+        mock::logger();
+        let ctx = TestCtx::with_config(
+            &[],
+            SmbOptions::default()
+                .case_sensitive(true)
+                .one_share_per_server(true)
+                .min_protocol(SmbDialect::Smb202)
+                .max_protocol(SmbDialect::Smb210),
+        );
+        assert!(ctx.client.list_dir("/").is_ok());
+        finalize_ctx(ctx);
+    }
+
+    #[test]
+    #[serial]
+    fn should_connect_with_smb3_bounds() {
+        mock::logger();
+        let ctx = TestCtx::with_config(
+            &[],
+            SmbOptions::default()
+                .case_sensitive(true)
+                .one_share_per_server(true)
+                .min_protocol(SmbDialect::Smb300)
+                .max_protocol(SmbDialect::Smb311),
+        );
+        assert!(ctx.client.list_dir("/").is_ok());
+        finalize_ctx(ctx);
+    }
+
+    #[test]
+    #[serial]
+    fn should_connect_with_smb1_to_nt1_only_server() {
+        mock::logger();
+        let ctx = TestCtx::with_config(
+            &["server min protocol = NT1", "server max protocol = NT1"],
+            SmbOptions::default()
+                .case_sensitive(true)
+                .one_share_per_server(true)
+                .min_protocol(SmbDialect::Nt1)
+                .max_protocol(SmbDialect::Nt1),
+        );
+        assert!(ctx.client.list_dir("/").is_ok());
+        finalize_ctx(ctx);
+    }
+
+    #[test]
+    #[serial]
+    fn should_reject_secure_bounds_against_nt1_only_server() {
+        mock::logger();
+        let container = SambaContainer::start_with_globals(&[
+            "server min protocol = NT1",
+            "server max protocol = NT1",
+        ]);
+        let url = format!("smb://localhost:{port}", port = container.get_smb_port());
+        let client = SmbClient::new(
+            SmbCredentials::default()
+                .server(&url)
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default()
+                .one_share_per_server(true)
+                .min_protocol(SmbDialect::Smb202)
+                .max_protocol(SmbDialect::Smb311),
+        )
+        .expect("client construction must succeed; negotiation happens on first operation");
+        assert!(client.list_dir("/").is_err());
+    }
+
+    #[test]
+    #[serial]
+    fn should_reject_smb1_bounds_against_smb2_only_server() {
+        mock::logger();
+        let container = SambaContainer::start_with_globals(&["server min protocol = SMB2_02"]);
+        let url = format!("smb://localhost:{port}", port = container.get_smb_port());
+        let client = SmbClient::new(
+            SmbCredentials::default()
+                .server(&url)
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default()
+                .one_share_per_server(true)
+                .min_protocol(SmbDialect::Nt1)
+                .max_protocol(SmbDialect::Nt1),
+        )
+        .expect("client construction must succeed; negotiation happens on first operation");
+        assert!(client.list_dir("/").is_err());
+    }
+
+    #[test]
+    #[serial]
+    fn should_keep_two_clients_independent() {
+        mock::logger();
+        let ctx = init_ctx();
+        // a second client to the same server with its own context and credentials
+        let second = SmbClient::new(
+            SmbCredentials::default()
+                .server(ctx.server_url())
+                .share("/temp")
+                .username("test")
+                .password("test")
+                .workgroup("pavao"),
+            SmbOptions::default()
+                .case_sensitive(false)
+                .one_share_per_server(true),
+        )
+        .expect("failed to create second client");
+        assert!(ctx.client.list_dir("/").is_ok());
+        assert!(second.list_dir("/").is_ok());
+        // dropping the second client must not invalidate the first
+        drop(second);
+        assert!(ctx.client.list_dir("/").is_ok());
         finalize_ctx(ctx);
     }
 

@@ -1,6 +1,7 @@
 //! Values used to configure clients and describe remote SMB entries.
 
 mod credentials;
+mod dialect;
 mod dirent;
 mod file;
 mod mode;
@@ -9,6 +10,8 @@ mod stat;
 
 #[doc(inline)]
 pub use credentials::SmbCredentials;
+#[doc(inline)]
+pub use dialect::SmbDialect;
 #[doc(inline)]
 pub use dirent::{SmbDirent, SmbDirentType};
 #[doc(inline)]

@@ -4,7 +4,9 @@ use testcontainers::core::{ContainerPort, WaitFor};
 use testcontainers::{Container, Image};
 
 #[derive(Debug, Default, Clone)]
-struct SambaImage;
+struct SambaImage {
+    globals: Vec<String>,
+}
 
 impl Image for SambaImage {
     fn name(&self) -> &str {
@@ -20,17 +22,21 @@ impl Image for SambaImage {
     }
 
     fn cmd(&self) -> impl IntoIterator<Item = impl Into<Cow<'_, str>>> {
-        vec![
-            "samba.sh",
-            "-u",
-            "test;test",
-            "-p",
-            "-s",
-            "temp;/mnt/tmp;yes;no;yes;test;test",
-            "-w",
-            "pavao",
-        ]
-        .into_iter()
+        let mut cmd: Vec<Cow<'_, str>> = vec![
+            "samba.sh".into(),
+            "-u".into(),
+            "test;test".into(),
+            "-p".into(),
+            "-s".into(),
+            "temp;/mnt/tmp;yes;no;yes;test;test".into(),
+            "-w".into(),
+            "pavao".into(),
+        ];
+        for global in &self.globals {
+            cmd.push("-g".into());
+            cmd.push(Cow::Owned(global.clone()));
+        }
+        cmd
     }
 
     fn expose_ports(&self) -> &[testcontainers::core::ContainerPort] {
@@ -43,9 +49,21 @@ pub struct SambaContainer {
 }
 
 impl SambaContainer {
+    #[expect(
+        dead_code,
+        reason = "default test contexts delegate through configurable startup"
+    )]
     pub fn start() -> Self {
+        Self::start_with_globals(&[])
+    }
+
+    /// Starts a Samba container with extra `smb.conf` global parameters.
+    pub fn start_with_globals(globals: &[&str]) -> Self {
         use testcontainers::runners::SyncRunner;
-        let container = SambaImage.start().expect("failed to start container");
+        let image = SambaImage {
+            globals: globals.iter().map(|global| global.to_string()).collect(),
+        };
+        let container = image.start().expect("failed to start container");
 
         Self { container }
     }
