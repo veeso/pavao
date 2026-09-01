@@ -21,8 +21,8 @@ glob = "0.3"
 lazy_static = "1"
 libc = "0.2"
 log = "0.4"
-pavao-src = { version = "4.22.0-4", path = "pavao-src" }
-pavao-sys = { version = "0.2.12", path = "pavao-sys" }
+pavao-src = { version = "4", path = "pavao-src" }
+pavao-sys = { version = "0.2", path = "pavao-sys" }
 pkg-config = "0.3"
 pretty_assertions = "1"
 rpassword = "7"
