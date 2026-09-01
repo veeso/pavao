@@ -1122,6 +1122,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionUtimes(c: *mut SMBCCTX) -> smbc_utimes_fn;
+    /// Returns the extended-attribute write callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionSetxattr(c: *mut SMBCCTX) -> smbc_setxattr_fn;
     /// Returns the file-printing callback installed in `c`.
     ///
     /// # Safety
@@ -1625,6 +1631,14 @@ mod tests {
     fn binds_smbc_get_function_utimes() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionUtimes(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_setxattr() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionSetxattr(context).is_some());
         });
     }
 }
