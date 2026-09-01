@@ -689,6 +689,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_setTimeout(c: *mut SMBCCTX, timeout: c_int);
+    /// Returns the TCP port configured for `c`, or zero for the native default.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getPort(c: *mut SMBCCTX) -> u16;
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1082,6 +1088,14 @@ mod tests {
             );
             smbc_setLogCallback(context, std::ptr::null_mut(), None);
             assert!(called.load(Ordering::SeqCst));
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_default_port() {
+        with_context(|context| unsafe {
+            assert_eq!(smbc_getPort(context), 0);
         });
     }
 }
