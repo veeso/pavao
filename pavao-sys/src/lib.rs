@@ -158,6 +158,24 @@ pub const SMBC_ENCRYPTLEVEL_REQUEST: smbc_smb_encrypt_level = 1;
 /// SMB encryption is required.
 pub const SMBC_ENCRYPTLEVEL_REQUIRE: smbc_smb_encrypt_level = 2;
 
+/// Extended-attribute flag that requires a new attribute.
+pub const SMBC_XATTR_FLAG_CREATE: c_int = 0x1;
+/// Extended-attribute flag that requires an existing attribute.
+pub const SMBC_XATTR_FLAG_REPLACE: c_int = 0x2;
+
+/// DOS attribute bit for read-only files.
+pub const SMBC_DOS_MODE_READONLY: c_int = 0x01;
+/// DOS attribute bit for hidden files.
+pub const SMBC_DOS_MODE_HIDDEN: c_int = 0x02;
+/// DOS attribute bit for system files.
+pub const SMBC_DOS_MODE_SYSTEM: c_int = 0x04;
+/// DOS attribute bit for volume identifiers.
+pub const SMBC_DOS_MODE_VOLUME_ID: c_int = 0x08;
+/// DOS attribute bit for directories.
+pub const SMBC_DOS_MODE_DIRECTORY: c_int = 0x10;
+/// DOS attribute bit for archived files.
+pub const SMBC_DOS_MODE_ARCHIVE: c_int = 0x20;
+
 #[repr(C)]
 #[derive(Copy)]
 /// Information about a queued SMB print job.
@@ -891,5 +909,17 @@ mod tests {
         assert_eq!(SMBC_ENCRYPTLEVEL_NONE, 0);
         assert_eq!(SMBC_ENCRYPTLEVEL_REQUEST, 1);
         assert_eq!(SMBC_ENCRYPTLEVEL_REQUIRE, 2);
+    }
+
+    #[test]
+    fn exposes_extended_attribute_constants() {
+        assert_eq!(SMBC_XATTR_FLAG_CREATE, 0x1);
+        assert_eq!(SMBC_XATTR_FLAG_REPLACE, 0x2);
+        assert_eq!(SMBC_DOS_MODE_READONLY, 0x01);
+        assert_eq!(SMBC_DOS_MODE_HIDDEN, 0x02);
+        assert_eq!(SMBC_DOS_MODE_SYSTEM, 0x04);
+        assert_eq!(SMBC_DOS_MODE_VOLUME_ID, 0x08);
+        assert_eq!(SMBC_DOS_MODE_DIRECTORY, 0x10);
+        assert_eq!(SMBC_DOS_MODE_ARCHIVE, 0x20);
     }
 }
