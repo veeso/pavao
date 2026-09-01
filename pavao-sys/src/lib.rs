@@ -834,6 +834,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionUseKerberos(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether authentication falls back after Kerberos fails.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionFallbackAfterKerberos(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls fallback after Kerberos authentication fails.
     ///
     /// # Safety
@@ -1355,6 +1361,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionUseKerberos(context, 1);
             assert_eq!(smbc_getOptionUseKerberos(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_kerberos_fallback_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionFallbackAfterKerberos(context, 1);
+            assert_eq!(smbc_getOptionFallbackAfterKerberos(context), 1);
         });
     }
 }
