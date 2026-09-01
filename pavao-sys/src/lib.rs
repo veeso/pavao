@@ -612,6 +612,15 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_setDebug(c: *mut SMBCCTX, debug: c_int);
+    /// Sets the global `libsmbclient` configuration file used by `c`.
+    ///
+    /// Returns zero on success or `-1` when the file cannot be loaded.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer, and `file` must point to a valid
+    /// NUL-terminated path.
+    pub fn smbc_setConfiguration(c: *mut SMBCCTX, file: *const c_char) -> c_int;
     /// Returns the NetBIOS name configured for `c`.
     ///
     /// # Safety
@@ -1021,6 +1030,17 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setDebug(context, 7);
             assert_eq!(smbc_getDebug(context), 7);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn rejects_missing_configuration() {
+        with_context(|context| unsafe {
+            assert_eq!(
+                smbc_setConfiguration(context, c"/definitely/missing/pavao.conf".as_ptr()),
+                -1
+            );
         });
     }
 }
