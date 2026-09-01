@@ -24,6 +24,19 @@ pub fn result_from_ptr_mut<T>(ptr: *mut T) -> io::Result<*mut T> {
     }
 }
 
+/// Returns a const pointer when non-null, or the last operating-system error otherwise.
+///
+/// # Errors
+///
+/// Returns the current operating-system error when `ptr` is null.
+pub fn result_from_ptr<T>(ptr: *const T) -> io::Result<*const T> {
+    if ptr.is_null() {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(ptr)
+    }
+}
+
 /// Reads a borrowed C string, replacing invalid UTF-8 sequences.
 ///
 /// # Safety
@@ -198,6 +211,10 @@ mod test {
         let pointer = ptr::from_mut(&mut value);
         assert_eq!(result_from_ptr_mut(pointer).unwrap(), pointer);
         assert!(result_from_ptr_mut::<u8>(ptr::null_mut()).is_err());
+
+        let const_pointer = ptr::from_ref(&value);
+        assert_eq!(result_from_ptr(const_pointer).unwrap(), const_pointer);
+        assert!(result_from_ptr::<u8>(ptr::null()).is_err());
     }
 
     #[test]
