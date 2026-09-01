@@ -966,6 +966,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionStat(c: *mut SMBCCTX) -> smbc_stat_fn;
+    /// Returns the open-file metadata callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionFstat(c: *mut SMBCCTX) -> smbc_fstat_fn;
     /// Returns the filesystem-statistics callback installed in `c`.
     ///
     /// # Safety
@@ -1442,6 +1448,14 @@ mod tests {
     fn binds_smbc_get_function_splice() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionSplice(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_fstat() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionFstat(context).is_some());
         });
     }
 }
