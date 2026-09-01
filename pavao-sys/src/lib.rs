@@ -493,6 +493,11 @@ pub type smbc_readdir_fn =
 /// next read or directory close. Null means end-of-directory or failure.
 pub type smbc_readdirplus_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, dir: *mut SMBCFILE) -> *mut libsmb_file_info>;
+/// Optional callback that reads the next directory entry and metadata into `st`.
+#[cfg(feature = "abi-0-6")]
+pub type smbc_readdirplus2_fn = option::Option<
+    extern "C" fn(c: *mut SMBCCTX, dir: *mut SMBCFILE, st: *mut stat) -> *const libsmb_file_info,
+>;
 /// Optional callback that reads multiple directory entries into a buffer.
 ///
 /// `dir` must be live and `dirp` must be writable for `count` bytes. Returns bytes written, zero at
@@ -1054,6 +1059,15 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionReaddirPlus(c: *mut SMBCCTX) -> smbc_readdirplus_fn;
+    /// Returns the extended directory-read callback that also accepts a `stat` buffer.
+    ///
+    /// Available when the `abi-0-6` feature is enabled.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    #[cfg(feature = "abi-0-6")]
+    pub fn smbc_getFunctionReaddirPlus2(c: *mut SMBCCTX) -> smbc_readdirplus2_fn;
     /// Returns the multiple-directory-entry callback installed in `c`.
     ///
     /// # Safety
@@ -1588,6 +1602,15 @@ mod tests {
     fn binds_smbc_get_function_notify() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionNotify(context).is_some());
+        });
+    }
+
+    #[cfg(feature = "abi-0-6")]
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_readdir_plus_2() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionReaddirPlus2(context).is_some());
         });
     }
 }
