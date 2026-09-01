@@ -334,7 +334,7 @@ impl SmbClient {
                     break;
                 }
                 unsafe {
-                    match SmbDirent::try_from(*dirent) {
+                    match SmbDirent::try_from(&*dirent) {
                         Ok(dirent)
                             if dirent.name() != "."
                                 && dirent.name() != ".."
