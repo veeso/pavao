@@ -932,6 +932,15 @@ unsafe extern "C" {
     /// `c` must be a valid native context pointer.
     #[cfg(feature = "abi-0-8")]
     pub fn smbc_getOptionPosixExtensions(c: *mut SMBCCTX) -> smbc_bool;
+    /// Enables or disables POSIX extensions for `c`.
+    ///
+    /// Available when the `abi-0-8` feature is enabled.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, uninitialized native context pointer.
+    #[cfg(feature = "abi-0-8")]
+    pub fn smbc_setOptionPosixExtensions(c: *mut SMBCCTX, b: smbc_bool);
     /// Sets the minimum and maximum SMB dialects offered during protocol negotiation.
     ///
     /// Each protocol name must be a NUL-terminated Samba dialect string such as `NT1`,
@@ -1742,6 +1751,16 @@ mod tests {
         with_context(|context| unsafe {
             let value = smbc_getOptionPosixExtensions(context);
             assert!(value == 0 || value == 1);
+        });
+    }
+
+    #[cfg(feature = "abi-0-8")]
+    #[test]
+    #[serial]
+    fn sets_posix_extensions_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionPosixExtensions(context, 1);
+            assert_eq!(smbc_getOptionPosixExtensions(context), 1);
         });
     }
 }
