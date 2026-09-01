@@ -43,7 +43,7 @@ fn main() {
     treeplus(&client, "/DCIM", 0);
 }
 
-/// Read a secret from tty with customisable prompt
+/// Reads a secret from the terminal using a customizable prompt.
 fn read_secret_from_tty(prompt: &str) -> std::io::Result<String> {
     rpassword::prompt_password(prompt)
 }

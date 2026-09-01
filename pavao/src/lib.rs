@@ -1,40 +1,42 @@
-//! # Pavão
+#![warn(missing_docs)]
+
+//! A safe SMB 2/3 client built on Samba's `libsmbclient`.
 //!
-//! [Pavão](https://github.com/veeso/pavao) is a Rust client library for SMB2/SMB3
-//! which exposes type-safe functions to interact with the C libsmbclient
+//! Pavão provides typed APIs for connecting to SMB shares, browsing directories,
+//! inspecting metadata, and reading or writing remote files.
 //!
-//! ## Get Started
-//!
-//! ### Adding `pavao` to your cargo toml dependencies:
+//! ## Installation
 //!
 //! ```toml
 //! pavao = "0.2"
 //! ```
 //!
-//! ## Example
+//! ## Examples
 //!
-//!
-//! ```rust
+//! ```no_run
 //! use pavao::{SmbClient, SmbCredentials, SmbOptions};
 //!
-//! let client = SmbClient::new(
+//! let _client = SmbClient::new(
 //!     SmbCredentials::default()
-//!         .server("smb://localhost:3445")
-//!         .share("/temp")
-//!         .username("test")
-//!         .password("test")
-//!         .workgroup("pavao"),
-//!     SmbOptions::default()
-//!         .case_sensitive(true)
-//!         .one_share_per_server(true),
-//!     )
-//!     .unwrap();
-//!
-//! // drop connection
-//! drop(client);
+//!         .server("smb://server.example")
+//!         .share("/documents")
+//!         .username("alice")
+//!         .password("secret")
+//!         .workgroup("WORKGROUP"),
+//!     SmbOptions::default(),
+//! )?;
+//! # Ok::<(), pavao::SmbError>(())
 //! ```
 //!
-//! Further examples can be found under the `examples/` directory in the Github repository
+//! See the repository's `examples` directory for directory-tree and file-transfer programs.
+//!
+//! ## Feature flags
+//!
+//! | name       | description                                           | default |
+//! |------------|-------------------------------------------------------|---------|
+//! | `debug`    | Forward verbose native Samba diagnostics to standard error. |         |
+//! | `no-log`   | Disable `log` records from this crate at compile time. |         |
+//! | `vendored` | Build the bundled Samba source instead of using the system library. |         |
 //!
 
 #![doc(html_playground_url = "https://play.rust-lang.org")]
@@ -56,7 +58,9 @@ mod test;
 pub(crate) mod utils;
 
 // -- exports
+#[doc(inline)]
 pub use error::{SmbError, SmbResult};
+#[doc(inline)]
 pub use smb::{
     SmbClient, SmbCredentials, SmbDirent, SmbDirentInfo, SmbDirentType, SmbEncryptionLevel,
     SmbFile, SmbMode, SmbModeClass, SmbOpenOptions, SmbOptions, SmbShareMode, SmbStat, SmbStatVfs,

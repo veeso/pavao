@@ -1,6 +1,4 @@
-//! # File
-//!
-//! file type returned by open functions on server
+//! Remote files and file-opening options.
 
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
@@ -13,6 +11,11 @@ use pavao_sys::{
 use crate::{SmbClient, utils};
 
 #[derive(Debug)]
+/// An open remote file owned by an [`SmbClient`].
+///
+/// `SmbFile` implements [`Read`], [`Write`], and [`Seek`]. Dropping it attempts to close the native
+/// file handle; closure is skipped if the shared context or close callback is unavailable.
+/// [`Write::flush`] is a no-op because `libsmbclient` exposes no flush operation.
 pub struct SmbFile<'a> {
     smbc: &'a SmbClient,
     fd: *mut SMBCFILE,
@@ -103,16 +106,31 @@ impl Drop for SmbFile<'_> {
     }
 }
 
-/// Describes options for opening file
+/// Options controlling how a remote file is opened.
+///
+/// The default configuration opens an existing file for reading with mode `0o644`.
+///
+/// # Examples
+///
+/// ```
+/// use pavao::SmbOpenOptions;
+///
+/// let options = SmbOpenOptions::default()
+///     .read(true)
+///     .write(true)
+///     .create(true)
+///     .truncate(true)
+///     .mode(0o640);
+/// ```
 #[derive(Clone, Copy, Debug)]
 pub struct SmbOpenOptions {
-    /// is *bitwise OR* of `O_CREAT`, `O_EXCL` and `O_TRUNC`
+    /// Bitwise combination of the requested creation and append flags.
     flags: c_int,
-    /// if readable
+    /// Whether the handle permits reading.
     read: bool,
-    /// if writable
+    /// Whether the handle permits writing.
     write: bool,
-    /// for posix file mode
+    /// POSIX mode used when a file is created.
     pub(crate) mode: mode_t,
 }
 
@@ -128,52 +146,53 @@ impl Default for SmbOpenOptions {
 }
 
 impl SmbOpenOptions {
-    /// Allows reading file
+    /// Controls whether the opened file permits reading.
     pub fn read(mut self, read: bool) -> Self {
         self.read = read;
         self
     }
 
-    /// Allows writing to file.
+    /// Controls whether the opened file permits writing.
     pub fn write(mut self, write: bool) -> Self {
         self.write = write;
         self
     }
 
-    /// Allows appending to file.
+    /// Controls whether writes append to the end of the file.
     pub fn append(mut self, append: bool) -> Self {
         self.flag(libc::O_APPEND, append);
         self
     }
 
-    /// Allows creating file if it doesn't exists.
+    /// Controls whether the file is created when it does not exist.
     ///
-    /// Opening file will fail in case file exists if
-    /// `exclusive` is also set.
+    /// Opening fails if the file exists when [`Self::exclusive`] is also enabled.
     pub fn create(mut self, create: bool) -> Self {
         self.flag(libc::O_CREAT, create);
         self
     }
 
-    /// File will be truncated if it's already exists.
+    /// Controls whether an existing file is truncated when opened.
     pub fn truncate(mut self, truncate: bool) -> Self {
         self.flag(libc::O_TRUNC, truncate);
         self
     }
 
-    /// `open_*` will fail if file already exists (when used with `create` also set).
+    /// Controls whether creation fails when the file already exists.
+    ///
+    /// This option takes effect when [`Self::create`] is also enabled.
     pub fn exclusive(mut self, exclusive: bool) -> Self {
         self.flag(libc::O_EXCL, exclusive);
         self
     }
 
-    /// Set POSIX file mode
+    /// Sets the POSIX permission mode used when creating a file.
     pub fn mode(mut self, mode: mode_t) -> Self {
         self.mode = mode;
         self
     }
 
-    /// Naive impl, rewrite to check for incompatible flags
+    // Converts the configured access options to native `open` flags.
     pub(crate) fn to_flags(self) -> c_int {
         let base_mode = match (self.read, self.write) {
             // defaults to read only
@@ -184,7 +203,7 @@ impl SmbOpenOptions {
         base_mode | self.flags
     }
 
-    /// flags value
+    // Enables or disables one native `open` flag.
     fn flag(&mut self, flag: c_int, on: bool) {
         if on {
             self.flags |= flag;

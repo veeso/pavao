@@ -1,6 +1,4 @@
-//! # Stat
-//!
-//! file stat type
+//! Filesystem and directory-entry metadata returned by SMB servers.
 #![allow(clippy::unnecessary_cast)]
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -12,33 +10,33 @@ use super::SmbMode;
 use crate::utils::char_ptr_to_string;
 use crate::{SmbDirentType, SmbError};
 
-/// DOS Attribute mask for DIRECTORY
+/// DOS directory attribute bit.
 const FILE_ATTRIBUTE_DIRECTORY: u16 = 0x0010;
 
-/// Smb statvfs type
+/// Filesystem statistics returned by [`SmbClient::statvfs`](crate::SmbClient::statvfs).
 #[derive(Debug, Clone)]
 pub struct SmbStatVfs {
-    /// File system block size
+    /// Filesystem block size in bytes.
     pub bsize: u64,
-    /// Fragment size
+    /// Fundamental allocation unit in bytes.
     pub frsize: u64,
-    /// Size of fs in f_frsize units
+    /// Total filesystem size in `frsize` units.
     pub blocks: u64,
-    /// Number of free blocks
+    /// Total number of free blocks.
     pub bfree: u64,
-    /// Number of free blocks for unprivileged users
+    /// Number of free blocks available to unprivileged users.
     pub bavail: u64,
-    /// Number of inodes
+    /// Total number of file nodes.
     pub files: u64,
-    /// Number of free inodes
+    /// Total number of free file nodes.
     pub ffree: u64,
-    /// Number of free inodes for unprivileged users
+    /// Number of free file nodes available to unprivileged users.
     pub favail: u64,
-    /// Filesystem ID
+    /// Filesystem identifier.
     pub fsid: u64,
-    /// Mount flags
+    /// Filesystem mount flags.
     pub flag: u64,
-    /// Maximum filename length
+    /// Maximum filename length in bytes.
     pub namemax: u64,
 }
 
@@ -138,31 +136,32 @@ impl From<statvfs> for SmbStatVfs {
     }
 }
 
-/// Smb stat type
+/// POSIX-style metadata for a remote file or directory.
 #[derive(Debug, Clone)]
 pub struct SmbStat {
-    /// Last access time
+    /// Last access time.
     pub accessed: SystemTime,
-    /// Blocks occupied by file
+    /// Number of blocks allocated to the entry.
     pub blocks: i64,
-    /// Block size
+    /// Preferred block size for I/O.
     pub blksize: i64,
-    /// Creation time
+    /// Metadata-change time reported by `stat`.
     pub created: SystemTime,
-    /// Device
+    /// Device identifier.
     pub dev: i32,
-    /// Group id
+    /// Owning group identifier.
     pub gid: u32,
-    /// Unix permissions
+    /// File type and POSIX permissions.
     pub mode: SmbMode,
-    /// Modify time
+    /// Last content-modification time.
     pub modified: SystemTime,
-    /// Link associated to file
+    /// Number of hard links to the entry.
     pub nlink: u64,
+    /// Device identifier represented by a special file.
     pub rdev: u64,
-    /// File size in bytes
+    /// File size in bytes.
     pub size: u64,
-    /// User id
+    /// Owning user identifier.
     pub uid: u32,
 }
 
@@ -237,33 +236,33 @@ impl From<stat> for SmbStat {
     }
 }
 
-/// SMB directory entity with metadata
+/// A directory entry with metadata returned by an extended listing.
 #[derive(Debug, Clone)]
 pub struct SmbDirentInfo {
-    /// Name of file
+    /// Entry name.
     pub name: String,
-    /// Short name of file
+    /// DOS-compatible short name, when available.
     pub short_name: String,
-    /// Size of file
+    /// File size in bytes.
     pub size: u64,
-    /// DOS attributes of file
+    /// DOS attribute bitmask.
     pub attrs: u16,
-    /// Change time for the file
+    /// Last metadata-change time.
     pub ctime: SystemTime,
-    /// Birth/Create time of file (if not supported, it will be 0)
+    /// Creation time, or the Unix epoch when unsupported.
     pub btime: SystemTime,
-    /// Modified time for the file
+    /// Last content-modification time.
     pub mtime: SystemTime,
-    /// Access time for the file
+    /// Last access time.
     pub atime: SystemTime,
-    /// Group ID of file
+    /// Owning user identifier.
     pub uid: u32,
-    /// User ID of file
+    /// Owning group identifier.
     pub gid: u32,
 }
 
 impl SmbDirentInfo {
-    /// Get directory entity type
+    /// Infers whether this entry is a file or directory from its DOS attributes.
     pub fn get_type(&self) -> SmbDirentType {
         if self.attrs & FILE_ATTRIBUTE_DIRECTORY != 0 {
             SmbDirentType::Dir
@@ -272,12 +271,12 @@ impl SmbDirentInfo {
         }
     }
 
-    /// Get name
+    /// Returns the entry name.
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
 
-    /// Get short name
+    /// Returns the DOS-compatible short name.
     pub fn short_name(&self) -> &str {
         self.short_name.as_str()
     }

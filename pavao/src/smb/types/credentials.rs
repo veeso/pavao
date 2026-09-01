@@ -1,8 +1,22 @@
-//! # Credentials
-//!
-//! module which exposes the smb credentials to authenticate to the smb server
+//! Credentials used to authenticate with an SMB server.
 
-/// SmbCredentials
+/// Authentication and share-selection settings for [`SmbClient`](crate::SmbClient).
+///
+/// Authentication fields default to empty strings, allowing anonymous authentication when the
+/// server supports it. A usable client still requires an appropriate server and share.
+///
+/// # Examples
+///
+/// ```
+/// use pavao::SmbCredentials;
+///
+/// let credentials = SmbCredentials::default()
+///     .server("smb://server.example")
+///     .share("/documents")
+///     .username("alice")
+///     .password("secret")
+///     .workgroup("WORKGROUP");
+/// ```
 #[derive(Debug, Default, Clone)]
 pub struct SmbCredentials {
     pub(crate) password: String,
@@ -13,31 +27,31 @@ pub struct SmbCredentials {
 }
 
 impl SmbCredentials {
-    /// Construct SmbCredentials with the provided password
+    /// Sets the password used for authentication.
     pub fn password<S: AsRef<str>>(mut self, password: S) -> Self {
         self.password = password.as_ref().to_string();
         self
     }
 
-    /// Construct SmbCredentials with the provided server
+    /// Sets the SMB server URL, such as `smb://server.example`.
     pub fn server<S: AsRef<str>>(mut self, server: S) -> Self {
         self.server = server.as_ref().to_string();
         self
     }
 
-    /// Construct SmbCredentials with the provided share
+    /// Sets the share path on the server.
     pub fn share<S: AsRef<str>>(mut self, share: S) -> Self {
         self.share = share.as_ref().to_string();
         self
     }
 
-    /// Construct SmbCredentials with the provided username
+    /// Sets the username used for authentication.
     pub fn username<S: AsRef<str>>(mut self, username: S) -> Self {
         self.username = username.as_ref().to_string();
         self
     }
 
-    /// Construct SmbCredentials with the provided workgroup
+    /// Sets the Windows workgroup or domain used for authentication.
     pub fn workgroup<S: AsRef<str>>(mut self, workgroup: S) -> Self {
         self.workgroup = workgroup.as_ref().to_string();
         self
