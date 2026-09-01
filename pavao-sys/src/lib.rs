@@ -738,6 +738,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_setOptionUseNTHash(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns whether native debug output is written to standard error for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionDebugToStderr(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1229,6 +1235,15 @@ mod tests {
                 c"password".as_ptr(),
             );
             assert_eq!(std::ffi::CStr::from_ptr(smbc_getUser(context)), c"user");
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_debug_to_stderr_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionDebugToStderr(context, 1);
+            assert_eq!(smbc_getOptionDebugToStderr(context), 1);
         });
     }
 }
