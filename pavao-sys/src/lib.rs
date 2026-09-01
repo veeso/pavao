@@ -164,6 +164,8 @@ pub type SMBCSRV = _SMBCSRV;
 pub enum _SMBCFILE {}
 /// Native SMB file or directory handle.
 pub type SMBCFILE = _SMBCFILE;
+/// Opaque native SMB client context.
+pub enum _SMBCCTX {}
 /// Native `libsmbclient` context.
 pub type SMBCCTX = _SMBCCTX;
 
@@ -492,160 +494,6 @@ pub type smbc_list_print_jobs_fn = option::Option<
 pub type smbc_unlink_print_job_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, fname: *const c_char, id: c_int) -> c_int>;
 
-/// Opaque internal data owned by `libsmbclient`.
-pub enum SMBC_internal_data {}
-#[repr(C)]
-#[derive(Copy)]
-/// Native `libsmbclient` context layout.
-///
-/// Applications should prefer the native accessor functions over direct field access.
-pub struct _SMBCCTX {
-    /// Native debug verbosity.
-    pub debug: c_int,
-    /// Pointer to the configured NUL-terminated NetBIOS name.
-    pub netbios_name: *mut c_char,
-    /// Pointer to the configured NUL-terminated workgroup.
-    pub workgroup: *mut c_char,
-    /// Pointer to the configured NUL-terminated username.
-    pub user: *mut c_char,
-    /// Operation timeout in milliseconds.
-    pub timeout: c_int,
-    /// File-open callback.
-    pub open: smbc_open_fn,
-    /// File-creation callback.
-    pub creat: smbc_creat_fn,
-    /// File-read callback.
-    pub read: smbc_read_fn,
-    /// File-write callback.
-    pub write: smbc_write_fn,
-    /// File-removal callback.
-    pub unlink: smbc_unlink_fn,
-    /// Entry-rename callback.
-    pub rename: smbc_rename_fn,
-    /// File-seek callback.
-    pub lseek: smbc_lseek_fn,
-    /// Path-metadata callback.
-    pub stat: smbc_stat_fn,
-    /// Handle-metadata callback.
-    pub fstat: smbc_fstat_fn,
-    /// File-close callback.
-    pub close_fn: smbc_close_fn,
-    /// Directory-open callback.
-    pub opendir: smbc_opendir_fn,
-    /// Directory-close callback.
-    pub closedir: smbc_closedir_fn,
-    /// Directory-read callback.
-    pub readdir: smbc_readdir_fn,
-    /// Batched directory-read callback.
-    pub getdents: smbc_getdents_fn,
-    /// Directory-creation callback.
-    pub mkdir: smbc_mkdir_fn,
-    /// Directory-removal callback.
-    pub rmdir: smbc_rmdir_fn,
-    /// Directory-position callback.
-    pub telldir: smbc_telldir_fn,
-    /// Directory-seek callback.
-    pub lseekdir: smbc_lseekdir_fn,
-    /// Directory-metadata callback.
-    pub fstatdir: smbc_fstatdir_fn,
-    /// Mode-change callback.
-    pub chmod: smbc_chmod_fn,
-    /// Timestamp-change callback.
-    pub utimes: smbc_utimes_fn,
-    /// Extended-attribute write callback.
-    pub setxattr: smbc_setxattr_fn,
-    /// Extended-attribute read callback.
-    pub getxattr: smbc_getxattr_fn,
-    /// Extended-attribute removal callback.
-    pub removexattr: smbc_removexattr_fn,
-    /// Extended-attribute listing callback.
-    pub listxattr: smbc_listxattr_fn,
-    /// File-printing callback.
-    pub print_file: smbc_print_file_fn,
-    /// Print-job creation callback.
-    pub open_print_job: smbc_open_print_job_fn,
-    /// Print-job listing callback.
-    pub list_print_jobs: smbc_list_print_jobs_fn,
-    /// Print-job removal callback.
-    pub unlink_print_job: smbc_unlink_print_job_fn,
-    /// Cache and authentication callback table.
-    pub callbacks: _smbc_callbacks,
-    /// Reserved native extension pointer.
-    pub reserved: *mut c_void,
-    /// Native context flags.
-    pub flags: c_int,
-    /// Stored native options.
-    pub options: _smbc_options,
-    /// Pointer to opaque native context state.
-    pub internal: *mut SMBC_internal_data,
-}
-
-impl clone::Clone for _SMBCCTX {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl default::Default for _SMBCCTX {
-    fn default() -> Self {
-        unsafe { mem::zeroed() }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy)]
-/// Callback table used by a native SMB context.
-pub struct _smbc_callbacks {
-    /// Authentication callback without a context parameter.
-    pub auth_fn: smbc_get_auth_data_fn,
-    /// Cached-server health-check callback.
-    pub check_server_fn: smbc_check_server_fn,
-    /// Unused-server removal callback.
-    pub remove_unused_server_fn: smbc_remove_unused_server_fn,
-    /// Cached-server insertion callback.
-    pub add_cached_srv_fn: smbc_add_cached_srv_fn,
-    /// Cached-server lookup callback.
-    pub get_cached_srv_fn: smbc_get_cached_srv_fn,
-    /// Cached-server removal callback.
-    pub remove_cached_srv_fn: smbc_remove_cached_srv_fn,
-    /// Cache-purge callback.
-    pub purge_cached_fn: smbc_purge_cached_fn,
-}
-
-impl clone::Clone for _smbc_callbacks {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl default::Default for _smbc_callbacks {
-    fn default() -> Self {
-        unsafe { mem::zeroed() }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy)]
-/// Options stored directly in a native SMB context.
-pub struct _smbc_options {
-    /// Maximum number of local master browsers queried while browsing.
-    pub browse_max_lmb_count: c_int,
-    /// Whether directory-entry names are URL encoded.
-    pub urlencode_readdir_entries: c_int,
-    /// Whether one server connection is restricted to one share.
-    pub one_share_per_server: c_int,
-}
-impl clone::Clone for _smbc_options {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl default::Default for _smbc_options {
-    fn default() -> Self {
-        unsafe { mem::zeroed() }
-    }
-}
-
 #[link(name = "smbclient")]
 unsafe extern "C" {
     /// Sets the native debug verbosity for `c`.
@@ -936,4 +784,26 @@ unsafe extern "C" {
     ///
     /// The returned pointer is borrowed static storage and must not be modified or freed.
     pub fn smbc_version() -> *const c_char;
+}
+
+#[cfg(test)]
+mod tests {
+    use serial_test::serial;
+
+    use super::*;
+
+    fn with_context(test: impl FnOnce(*mut SMBCCTX)) {
+        unsafe {
+            let context = smbc_new_context();
+            assert!(!context.is_null());
+            test(context);
+            assert_eq!(smbc_free_context(context, 1), 0);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn treats_smbc_context_as_opaque() {
+        with_context(|context| assert!(!context.is_null()));
+    }
 }
