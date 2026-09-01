@@ -167,7 +167,6 @@ impl From<SmbModeClass> for mode_t {
 
 #[cfg(test)]
 mod test {
-
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -175,21 +174,21 @@ mod test {
     #[test]
     fn should_create_unix_pex_class() {
         let pex: SmbModeClass = SmbModeClass::from(4);
-        assert_eq!(pex.read(), true);
-        assert_eq!(pex.write(), false);
-        assert_eq!(pex.execute(), false);
+        assert!(pex.read());
+        assert!(!pex.write());
+        assert!(!pex.execute());
         let pex: SmbModeClass = SmbModeClass::from(0);
-        assert_eq!(pex.read(), false);
-        assert_eq!(pex.write(), false);
-        assert_eq!(pex.execute(), false);
+        assert!(!pex.read());
+        assert!(!pex.write());
+        assert!(!pex.execute());
         let pex: SmbModeClass = SmbModeClass::from(3);
-        assert_eq!(pex.read(), false);
-        assert_eq!(pex.write(), true);
-        assert_eq!(pex.execute(), true);
+        assert!(!pex.read());
+        assert!(pex.write());
+        assert!(pex.execute());
         let pex: SmbModeClass = SmbModeClass::from(7);
-        assert_eq!(pex.read(), true);
-        assert_eq!(pex.write(), true);
-        assert_eq!(pex.execute(), true);
+        assert!(pex.read());
+        assert!(pex.write());
+        assert!(pex.execute());
         let pex: SmbModeClass = SmbModeClass::from(3);
         assert_eq!(pex.as_byte(), 3);
         let pex: SmbModeClass = SmbModeClass::from(7);
@@ -215,5 +214,35 @@ mod test {
     #[test]
     fn should_convert_u32_to_unix_pex() {
         let _ = SmbMode::from(0o754);
+    }
+
+    #[test]
+    fn should_create_mode_class_from_permissions() {
+        let permissions = SmbModeClass::new(true, false, true);
+
+        assert!(permissions.read());
+        assert!(!permissions.write());
+        assert!(permissions.execute());
+        assert_eq!(permissions.as_byte(), 5);
+    }
+
+    #[test]
+    fn should_identify_file_types() {
+        assert!(SmbMode::from(S_IFREG).is_file());
+        assert!(SmbMode::from(S_IFDIR).is_dir());
+        assert!(SmbMode::from(S_IFBLK).is_block());
+        assert!(SmbMode::from(S_IFCHR).is_character());
+        assert!(SmbMode::from(S_IFIFO).is_pipe());
+        assert!(SmbMode::from(S_IFSOCK).is_socket());
+        assert!(SmbMode::from(S_IFLNK).is_symlink());
+
+        let unknown = SmbMode::from(0);
+        assert!(!unknown.is_file());
+        assert!(!unknown.is_dir());
+        assert!(!unknown.is_block());
+        assert!(!unknown.is_character());
+        assert!(!unknown.is_pipe());
+        assert!(!unknown.is_socket());
+        assert!(!unknown.is_symlink());
     }
 }

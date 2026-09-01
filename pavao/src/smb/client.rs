@@ -52,6 +52,7 @@ lazy_static! {
 }
 
 /// Smb protocol client
+#[derive(Debug)]
 pub struct SmbClient {
     uri: String,
 }
@@ -103,7 +104,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("setting netbios name to {}", name.as_ref());
+        trace!("setting netbios name to {name}", name = name.as_ref());
         let name = utils::str_to_cstring(name)?;
         unsafe { smbc_setNetbiosName(self.ctx()?, name.into_raw()) }
         Ok(())
@@ -123,7 +124,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("configuring workgroup to {}", name.as_ref());
+        trace!("configuring workgroup to {name}", name = name.as_ref());
         let name = utils::str_to_cstring(name)?;
         unsafe { smbc_setWorkgroup(self.ctx()?, name.into_raw()) }
         Ok(())
@@ -143,7 +144,10 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("configuring current username as {}", name.as_ref());
+        trace!(
+            "configuring current username as {name}",
+            name = name.as_ref()
+        );
         let name = utils::str_to_cstring(name)?;
         unsafe { smbc_setUser(self.ctx()?, name.into_raw()) }
         Ok(())
@@ -157,7 +161,10 @@ impl SmbClient {
 
     /// Set timeout to server
     pub fn set_timeout(&self, timeout: Duration) -> SmbResult<()> {
-        trace!("setting timeout to {}ms", timeout.as_millis());
+        trace!(
+            "setting timeout to {timeout_ms}ms",
+            timeout_ms = timeout.as_millis()
+        );
         unsafe { smbc_setTimeout(self.ctx()?, timeout.as_millis() as c_int) }
         Ok(())
     }
@@ -176,7 +183,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("unlinking entry at {}", path.as_ref());
+        trace!("unlinking entry at {path}", path = path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
         let unlink_fn = self.get_fn(self.ctx()?, smbc_getFunctionUnlink)?;
         utils::to_result_with_ioerror((), unlink_fn(self.ctx()?, path.as_ptr()))
@@ -187,7 +194,11 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("renaming {} to {}", orig_url.as_ref(), new_url.as_ref());
+        trace!(
+            "renaming {orig_url} to {new_url}",
+            orig_url = orig_url.as_ref(),
+            new_url = new_url.as_ref()
+        );
         let orig_url = utils::str_to_cstring(self.uri(orig_url))?;
         let new_url = utils::str_to_cstring(self.uri(new_url))?;
         let rename_fn = self.get_fn(self.ctx()?, smbc_getFunctionRename)?;
@@ -207,7 +218,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("listing files at {}", path.as_ref());
+        trace!("listing files at {path}", path = path.as_ref());
         let path = utils::str_to_cstring(self.uri(path))?;
         let opendir_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpendir)?;
         let fd = opendir_fn(self.ctx()?, path.as_ptr());
@@ -230,19 +241,19 @@ impl SmbClient {
                             && dirent.name() != ".."
                             && !dirent.name().is_empty() =>
                     {
-                        trace!("found dirent: {:?}", dirent);
+                        trace!("found dirent: {dirent:?}");
                         entries.push(dirent);
                     }
                     Ok(_) => {
                         trace!("ignoring '..', '.' directories");
                     }
                     Err(e) => {
-                        error!("failed to decode directory entity {:?}: {}", dirent, e);
+                        error!("failed to decode directory entity {dirent:?}: {e}");
                     }
                 }
             }
         }
-        trace!("decoded {} dirents", entries.len());
+        trace!("decoded {count} dirents", count = entries.len());
         // Close directory
         let _ = closedir_fn(self.ctx()?, fd);
         Ok(entries)
@@ -253,7 +264,10 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("listing files with metadata at {}", path.as_ref());
+        trace!(
+            "listing files with metadata at {path}",
+            path = path.as_ref()
+        );
         let path = utils::str_to_cstring(self.uri(path))?;
         let opendir_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpendir)?;
         let fd = opendir_fn(self.ctx()?, path.as_ptr());
@@ -276,7 +290,7 @@ impl SmbClient {
                             && direntplus.name() != ".."
                             && !direntplus.name().is_empty() =>
                     {
-                        trace!("found direntplus: {:?}", direntplus);
+                        trace!("found direntplus: {direntplus:?}");
                         entries.push(direntplus);
                     }
                     Ok(_) => {
@@ -284,14 +298,16 @@ impl SmbClient {
                     }
                     Err(e) => {
                         error!(
-                            "failed to decode directory entity with metadata {:?}: {}",
-                            direntplus, e
+                            "failed to decode directory entity with metadata {direntplus:?}: {e}"
                         );
                     }
                 }
             }
         }
-        trace!("decoded {} direntpluses", entries.len());
+        trace!(
+            "decoded {count} directory entries with metadata",
+            count = entries.len()
+        );
         // Close directory
         let _ = closedir_fn(self.ctx()?, fd);
         Ok(entries)
@@ -302,7 +318,10 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("making directory at {} with mode {:?}", p.as_ref(), mode);
+        trace!(
+            "making directory at {path} with mode {mode:?}",
+            path = p.as_ref()
+        );
         let p = utils::str_to_cstring(self.uri(p))?;
         let mkdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionMkdir)?;
         utils::to_result_with_ioerror((), mkdir_fn(self.ctx()?, p.as_ptr(), mode.into()))
@@ -313,7 +332,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("removing directory at {}", p.as_ref());
+        trace!("removing directory at {path}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         let rmdir_fn = self.get_fn(self.ctx()?, smbc_getFunctionRmdir)?;
         utils::to_result_with_ioerror((), rmdir_fn(self.ctx()?, p.as_ptr()))
@@ -324,13 +343,16 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("Stating filesystem at {}", p.as_ref());
+        trace!("reading filesystem metadata at {path}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         unsafe {
             let mut st: libc::statvfs = mem::zeroed();
             let statvfs_fn = self.get_fn(self.ctx()?, smbc_getFunctionStatVFS)?;
             if statvfs_fn(self.ctx()?, p.as_ptr(), &mut st) < 0 {
-                error!("failed to stat filesystem: {}", utils::last_os_error());
+                error!(
+                    "failed to stat filesystem: {error}",
+                    error = utils::last_os_error()
+                );
                 Err(utils::last_os_error())
             } else {
                 Ok(SmbStatVfs::from(st))
@@ -343,13 +365,16 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("Stating file at {}", p.as_ref());
+        trace!("reading file metadata at {path}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         unsafe {
             let mut st: libc::stat = mem::zeroed();
             let stat_fn = self.get_fn(self.ctx()?, smbc_getFunctionStat)?;
             if stat_fn(self.ctx()?, p.as_ptr(), &mut st) < 0 {
-                error!("failed to stat file: {}", utils::last_os_error());
+                error!(
+                    "failed to stat file: {error}",
+                    error = utils::last_os_error()
+                );
                 Err(utils::last_os_error())
             } else {
                 Ok(SmbStat::from(st))
@@ -362,7 +387,7 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("changing mode for {} with {:?}", p.as_ref(), mode);
+        trace!("changing mode for {path} with {mode:?}", path = p.as_ref());
         let p = utils::str_to_cstring(self.uri(p))?;
         let chmod_fn = self.get_fn(self.ctx()?, smbc_getFunctionChmod)?;
         utils::to_result_with_ioerror((), chmod_fn(self.ctx()?, p.as_ptr(), mode.into()))
@@ -373,7 +398,11 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        trace!("printing {} to {} queue", p.as_ref(), print_queue.as_ref());
+        trace!(
+            "printing {path} to {print_queue} queue",
+            path = p.as_ref(),
+            print_queue = print_queue.as_ref()
+        );
         let p = utils::str_to_cstring(self.uri(p))?;
         let print_queue = utils::str_to_cstring(self.uri(print_queue))?;
         let print_fn = self.get_fn(self.ctx()?, smbc_getFunctionPrintFile)?;
@@ -387,15 +416,8 @@ impl SmbClient {
 
     /// Build connection uri
     fn build_uri(server: &str, share: &str) -> String {
-        format!(
-            "{}{}{}",
-            server,
-            match share.starts_with('/') {
-                true => "",
-                false => "/",
-            },
-            share
-        )
+        let separator = if share.starts_with('/') { "" } else { "/" };
+        format!("{server}{separator}{share}")
     }
 
     /// Get file uri
@@ -403,11 +425,14 @@ impl SmbClient {
     where
         S: AsRef<str>,
     {
-        format!("{}{}", self.uri, p.as_ref())
+        format!("{base}{path}", base = self.uri, path = p.as_ref())
     }
 
     /// Callback getter
-    #[allow(improper_ctypes_definitions)]
+    #[expect(
+        improper_ctypes_definitions,
+        reason = "libsmbclient exposes function-pointer getters through its C ABI"
+    )]
     pub(crate) fn get_fn<T>(
         &self,
         ctx: *mut SMBCCTX,
@@ -452,7 +477,7 @@ impl SmbClient {
         unsafe {
             let srv = utils::cstr(srv);
             let shr = utils::cstr(shr);
-            trace!("authenticating on {}\\{}", &srv, &shr);
+            trace!("authenticating on {srv}\\{shr}");
             let creds = AUTH_SERVICE
                 .lock()
                 .unwrap()
@@ -465,7 +490,7 @@ impl SmbClient {
     }
 
     fn auth_service_uuid(ctx: *mut SMBCCTX) -> String {
-        format!("{:?}", ctx)
+        format!("{ctx:?}")
     }
 
     /// Get underlying context
@@ -481,7 +506,7 @@ impl<'a> SmbClient {
         path: P,
         options: SmbOpenOptions,
     ) -> SmbResult<SmbFile<'a>> {
-        trace!("opening {} with {:?}", path.as_ref(), options);
+        trace!("opening {path} with {options:?}", path = path.as_ref());
         let open_fn = self.get_fn(self.ctx()?, smbc_getFunctionOpen)?;
         let path = utils::str_to_cstring(self.uri(path))?;
         let fd = utils::result_from_ptr_mut(open_fn(
@@ -494,7 +519,7 @@ impl<'a> SmbClient {
             error!("got a negative file descriptor");
             Err(SmbError::BadFileDescriptor)
         } else {
-            trace!("opened file with file descriptor {:?}", fd);
+            trace!("opened file with file descriptor {fd:?}");
             Ok(SmbFile::new(self, fd))
         }
     }
@@ -522,7 +547,7 @@ impl Drop for SmbClient {
 
 #[cfg(test)]
 mod test {
-    use std::io::{Cursor, Read};
+    use std::io::{Cursor, Read, Seek, SeekFrom, Write};
     use std::time::UNIX_EPOCH;
 
     use pretty_assertions::{assert_eq, assert_ne};
@@ -660,9 +685,9 @@ mod test {
         );
         // list dir
         let mut entries = ctx.client.list_dir("/cargo-test").unwrap();
-        entries.sort_by(|a, b| a.name().cmp(&b.name()));
+        entries.sort_by(|a, b| a.name().cmp(b.name()));
         assert_eq!(entries.len(), 3);
-        let abc = entries.get(0).unwrap();
+        let abc = entries.first().unwrap();
         assert_eq!(abc.name(), "abc");
         assert_eq!(abc.get_type(), SmbDirentType::File);
         let def = entries.get(1).unwrap();
@@ -686,11 +711,11 @@ mod test {
                 .mkdir("/cargo-test/hil", SmbMode::from(0o755))
                 .is_ok()
         );
-        // list dir
-        let mut entries = ctx.client.list_dir("/cargo-test").unwrap();
-        entries.sort_by(|a, b| a.name().cmp(&b.name()));
+        // list directory with metadata
+        let mut entries = ctx.client.list_dirplus("/cargo-test").unwrap();
+        entries.sort_by(|a, b| a.name().cmp(b.name()));
         assert_eq!(entries.len(), 3);
-        let abc = entries.get(0).unwrap();
+        let abc = entries.first().unwrap();
         assert_eq!(abc.name(), "ghi");
         assert_eq!(abc.get_type(), SmbDirentType::File);
         let def = entries.get(1).unwrap();
@@ -810,6 +835,7 @@ mod test {
             .unwrap();
         let mut reader = Cursor::new("test string\n".as_bytes());
         assert_eq!(std::io::copy(&mut reader, &mut writer).unwrap(), 12);
+        writer.flush().unwrap();
         drop(writer);
         finalize_ctx(ctx);
     }
@@ -843,6 +869,28 @@ mod test {
         finalize_ctx(ctx);
     }
 
+    #[test]
+    #[serial]
+    fn should_seek_file() {
+        mock::logger();
+        let ctx = init_ctx();
+        create_file_at(&ctx.client, "/cargo-test/test", "Hello, World!\n");
+        let mut file = ctx
+            .client
+            .open_with("/cargo-test/test", SmbOpenOptions::default().read(true))
+            .unwrap();
+
+        assert_eq!(file.seek(SeekFrom::Start(7)).unwrap(), 7);
+        assert_eq!(file.seek(SeekFrom::Current(5)).unwrap(), 12);
+        assert_eq!(file.seek(SeekFrom::End(-7)).unwrap(), 7);
+
+        let mut output = String::new();
+        file.read_to_string(&mut output).unwrap();
+        assert_eq!(output, "World!\n");
+        drop(file);
+        finalize_ctx(ctx);
+    }
+
     fn init_ctx() -> TestCtx {
         TestCtx::default()
     }
@@ -853,7 +901,7 @@ mod test {
     }
 
     fn create_file_at<S: AsRef<str>>(client: &SmbClient, uri: S, content: S) {
-        info!("create_file_at - uri: {}", uri.as_ref());
+        info!("create_file_at - uri: {uri}", uri = uri.as_ref());
 
         let mut reader = Cursor::new(content.as_ref().as_bytes());
         let mut writer = client

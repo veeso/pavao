@@ -45,9 +45,7 @@ pub struct SambaContainer {
 impl SambaContainer {
     pub fn start() -> Self {
         use testcontainers::runners::SyncRunner;
-        let container = SambaImage::default()
-            .start()
-            .expect("failed to start container");
+        let container = SambaImage.start().expect("failed to start container");
 
         Self { container }
     }
