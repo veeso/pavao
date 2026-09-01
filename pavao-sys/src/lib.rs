@@ -451,6 +451,9 @@ pub type smbc_stat_fn =
 /// zero on success or `-1` with `errno` set on failure.
 pub type smbc_statvfs_fn =
     option::Option<extern "C" fn(c: *mut SMBCCTX, fname: *const c_char, st: *mut statvfs) -> c_int>;
+/// Optional callback that reads filesystem statistics from an open file handle.
+pub type smbc_fstatvfs_fn =
+    option::Option<extern "C" fn(c: *mut SMBCCTX, file: *mut SMBCFILE, st: *mut statvfs) -> c_int>;
 /// Optional callback that reads metadata from an open file handle.
 ///
 /// `file` must be live and belong to `c`; `st` must be writable for one `stat`. Returns zero on
@@ -978,6 +981,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionStatVFS(c: *mut SMBCCTX) -> smbc_statvfs_fn;
+    /// Returns the open-file filesystem-statistics callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionFstatVFS(c: *mut SMBCCTX) -> smbc_fstatvfs_fn;
     /// Returns the file-close callback installed in `c`.
     ///
     /// # Safety
@@ -1456,6 +1465,14 @@ mod tests {
     fn binds_smbc_get_function_fstat() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionFstat(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_fstatvfs() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionFstatVFS(context).is_some());
         });
     }
 }
