@@ -762,6 +762,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized context and `share_mode` must be supported.
     pub fn smbc_setOptionOpenShareMode(c: *mut SMBCCTX, share_mode: smbc_share_mode);
+    /// Returns the SMB encryption policy configured for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionSmbEncryptionLevel(c: *mut SMBCCTX) -> smbc_smb_encrypt_level;
     /// Sets the SMB encryption policy for `c`.
     ///
     /// # Safety
@@ -1261,6 +1267,18 @@ mod tests {
             assert_eq!(
                 smbc_getOptionOpenShareMode(context),
                 SMBC_SHAREMODE_DENY_ALL
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_encryption_level_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionSmbEncryptionLevel(context, SMBC_ENCRYPTLEVEL_REQUIRE);
+            assert_eq!(
+                smbc_getOptionSmbEncryptionLevel(context),
+                SMBC_ENCRYPTLEVEL_REQUIRE
             );
         });
     }
