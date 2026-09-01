@@ -701,6 +701,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid native context pointer.
     pub fn smbc_setPort(c: *mut SMBCCTX, port: u16);
+    /// Returns whether full SMB time attribute names are enabled for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionFullTimeNames(c: *mut SMBCCTX) -> smbc_bool;
     /// Controls whether native debug output is written to standard error.
     ///
     /// # Safety
@@ -1111,6 +1117,14 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setPort(context, 445);
             assert_eq!(smbc_getPort(context), 445);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_full_time_names_option() {
+        with_context(|context| unsafe {
+            assert_eq!(smbc_getOptionFullTimeNames(context), 0);
         });
     }
 }
