@@ -1116,6 +1116,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionChmod(c: *mut SMBCCTX) -> smbc_chmod_fn;
+    /// Returns the timestamp-update callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionUtimes(c: *mut SMBCCTX) -> smbc_utimes_fn;
     /// Returns the file-printing callback installed in `c`.
     ///
     /// # Safety
@@ -1611,6 +1617,14 @@ mod tests {
     fn binds_smbc_get_function_readdir_plus_2() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionReaddirPlus2(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_utimes() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionUtimes(context).is_some());
         });
     }
 }
