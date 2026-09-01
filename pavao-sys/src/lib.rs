@@ -786,6 +786,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, uninitialized native context pointer.
     pub fn smbc_setOptionCaseSensitive(c: *mut SMBCCTX, b: smbc_bool);
+    /// Returns the maximum local master browser query count configured for `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid native context pointer.
+    pub fn smbc_getOptionBrowseMaxLmbCount(c: *mut SMBCCTX) -> c_int;
     /// Sets the maximum local master browser query count for `c`.
     ///
     /// # Safety
@@ -1295,6 +1301,15 @@ mod tests {
         with_context(|context| unsafe {
             smbc_setOptionCaseSensitive(context, 1);
             assert_eq!(smbc_getOptionCaseSensitive(context), 1);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn gets_browse_max_lmb_count_option() {
+        with_context(|context| unsafe {
+            smbc_setOptionBrowseMaxLmbCount(context, 9);
+            assert_eq!(smbc_getOptionBrowseMaxLmbCount(context), 9);
         });
     }
 }
