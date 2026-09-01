@@ -43,8 +43,8 @@
 use std::{clone, default, mem, option};
 
 use libc::{
-    c_char, c_int, c_uint, c_ulong, c_ushort, c_void, mode_t, off_t, size_t, ssize_t, stat,
-    statvfs, time_t, timespec, timeval,
+    c_char, c_int, c_uint, c_ushort, c_void, mode_t, off_t, size_t, ssize_t, stat, statvfs, time_t,
+    timespec, timeval,
 };
 
 #[repr(C)]
@@ -71,7 +71,7 @@ pub struct smbc_dirent {
 /// Extended directory-entry metadata returned by `libsmbclient`.
 pub struct libsmb_file_info {
     /// File size in bytes.
-    pub size: c_ulong,
+    pub size: u64,
     /// DOS attribute bitmask.
     pub attrs: c_ushort,
     /// Owning user identifier.
@@ -792,5 +792,15 @@ mod tests {
     #[serial]
     fn treats_smbc_context_as_opaque() {
         with_context(|context| assert!(!context.is_null()));
+    }
+
+    #[test]
+    fn uses_fixed_width_file_info_size() {
+        let info = libsmb_file_info {
+            size: u64::MAX,
+            ..Default::default()
+        };
+        assert_eq!(info.size, u64::MAX);
+        assert_eq!(std::mem::size_of_val(&info.size), 8);
     }
 }
