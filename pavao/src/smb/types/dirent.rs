@@ -32,12 +32,21 @@ impl SmbDirent {
     }
 }
 
-impl TryFrom<smbc_dirent> for SmbDirent {
+impl TryFrom<&smbc_dirent> for SmbDirent {
     type Error = SmbError;
 
-    fn try_from(d: smbc_dirent) -> Result<Self, Self::Error> {
+    fn try_from(d: &smbc_dirent) -> Result<Self, Self::Error> {
         let comment = char_ptr_to_string(d.comment)?;
-        let name = char_ptr_to_string(d.name.as_slice().as_ptr())?;
+        let name = unsafe {
+            // `dirlen` includes the flexible name storage returned by `libsmbclient`.
+            let bytes =
+                std::slice::from_raw_parts(d.name.as_ptr().cast::<u8>(), d.namelen as usize + 1);
+            std::ffi::CStr::from_bytes_with_nul(bytes)
+                .map_err(|_| SmbError::BadValue)?
+                .to_str()
+                .map_err(|_| SmbError::BadValue)?
+                .to_owned()
+        };
         Ok(Self {
             type_: SmbDirentType::try_from(d.smbc_type)?,
             comment,
@@ -107,10 +116,10 @@ impl TryFrom<c_uint> for SmbDirentType {
 #[cfg(test)]
 mod test {
 
+    use libc::c_char;
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::utils;
 
     #[test]
     fn should_convert_dirent_type_to_uint() {
@@ -155,21 +164,61 @@ mod test {
         assert!(SmbDirentType::try_from(100).is_err());
     }
 
+    #[repr(C)]
+    struct ShortDirent {
+        smbc_type: c_uint,
+        dirlen: c_uint,
+        commentlen: c_uint,
+        comment: *mut c_char,
+        namelen: c_uint,
+        name: [c_char; 4],
+    }
+
+    #[repr(C)]
+    struct LongDirent {
+        smbc_type: c_uint,
+        dirlen: c_uint,
+        commentlen: c_uint,
+        comment: *mut c_char,
+        namelen: c_uint,
+        name: [c_char; 6],
+    }
+
+    #[test]
+    fn converts_variable_length_dirent_without_overread() {
+        let raw = ShortDirent {
+            smbc_type: 8,
+            dirlen: std::mem::size_of::<ShortDirent>() as c_uint,
+            commentlen: 7,
+            comment: c"comment".as_ptr().cast_mut(),
+            namelen: 3,
+            name: [b'a' as c_char, b'b' as c_char, b'c' as c_char, 0],
+        };
+        let entry = unsafe { &*std::ptr::from_ref(&raw).cast::<smbc_dirent>() };
+        let converted = SmbDirent::try_from(entry).unwrap();
+
+        assert_eq!(converted.name(), "abc");
+        assert_eq!(converted.comment(), "comment");
+    }
+
     #[test]
     fn should_convert_dirent_to_smb_dirent() {
-        let mut dirent = smbc_dirent::default();
-        let comment = String::from("test");
-        let comment_ptr = utils::str_to_cstring(comment).unwrap();
-        dirent.smbc_type = 8;
-        dirent.comment = comment_ptr.into_raw();
-        dirent.commentlen = 5;
-        dirent.name = [0; 1024];
-        dirent.namelen = 1;
-        dirent.name[0] = 'h' as libc::c_char;
-        dirent.name[1] = 'e' as libc::c_char;
-        dirent.name[2] = 'l' as libc::c_char;
-        dirent.name[3] = 'l' as libc::c_char;
-        dirent.name[4] = 'o' as libc::c_char;
+        let raw = LongDirent {
+            smbc_type: 8,
+            dirlen: std::mem::size_of::<LongDirent>() as c_uint,
+            commentlen: 4,
+            comment: c"test".as_ptr().cast_mut(),
+            namelen: 5,
+            name: [
+                b'h' as c_char,
+                b'e' as c_char,
+                b'l' as c_char,
+                b'l' as c_char,
+                b'o' as c_char,
+                0,
+            ],
+        };
+        let dirent = unsafe { &*std::ptr::from_ref(&raw).cast::<smbc_dirent>() };
         let dirent = SmbDirent::try_from(dirent).unwrap();
         assert_eq!(dirent.get_type(), SmbDirentType::File);
         assert_eq!(dirent.name(), "hello");
@@ -178,6 +227,15 @@ mod test {
 
     #[test]
     fn should_fail_conversion_from_smbc_dirent() {
-        assert!(SmbDirent::try_from(smbc_dirent::default()).is_err());
+        let raw = ShortDirent {
+            smbc_type: 0,
+            dirlen: std::mem::size_of::<ShortDirent>() as c_uint,
+            commentlen: 0,
+            comment: std::ptr::null_mut(),
+            namelen: 3,
+            name: [0; 4],
+        };
+        let dirent = unsafe { &*std::ptr::from_ref(&raw).cast::<smbc_dirent>() };
+        assert!(SmbDirent::try_from(dirent).is_err());
     }
 }

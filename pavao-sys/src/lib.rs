@@ -48,7 +48,6 @@ use libc::{
 };
 
 #[repr(C)]
-#[derive(Copy)]
 /// A directory entry returned by `libsmbclient`.
 pub struct smbc_dirent {
     /// Native entry type discriminator.
@@ -64,20 +63,8 @@ pub struct smbc_dirent {
     pub comment: *mut c_char,
     /// Length of `name` in bytes, excluding its terminating NUL byte.
     pub namelen: c_uint,
-    /// Fixed-size buffer containing the NUL-terminated entry name.
-    pub name: [c_char; 1024usize],
-}
-
-impl clone::Clone for smbc_dirent {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl default::Default for smbc_dirent {
-    fn default() -> Self {
-        unsafe { mem::zeroed() }
-    }
+    /// Flexible trailing storage containing the NUL-terminated entry name.
+    pub name: [c_char; 1usize],
 }
 #[repr(C)]
 #[derive(Copy)]
