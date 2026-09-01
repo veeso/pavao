@@ -7,6 +7,22 @@
 //! Pavão provides typed APIs for connecting to SMB shares, browsing directories,
 //! inspecting metadata, and reading or writing remote files.
 //!
+//! ## Thread safety
+//!
+//! `libsmbclient` shares process-wide configuration state, so Pavão serializes every native call
+//! across all clients. Multiple clients with separate credentials and other per-context options
+//! may coexist, but they cannot perform SMB work in parallel. All simultaneously live clients
+//! must use the exact same minimum and maximum protocol bounds, including default or partial
+//! bounds. A different policy can be selected after every prior client is dropped.
+//!
+//! Raw calls through [`SmbClient::ctx`] or `pavao-sys` bypass this synchronization and must not
+//! race Pavão operations or other raw native calls.
+//!
+//! ## Performance
+//!
+//! The process-wide lock is held for each complete high-level operation. A blocking SMB request
+//! therefore delays every other Pavão SMB operation in the process.
+//!
 //! ## Installation
 //!
 //! ```toml

@@ -74,6 +74,7 @@
       - [Termux 🤖](#termux-)
       - [Build from sources 📁](#build-from-sources-)
     - [Select SMB dialect bounds](#select-smb-dialect-bounds)
+    - [Thread safety and performance](#thread-safety-and-performance)
   - [Vendored libsmbclient](#vendored-libsmbclient)
     - [Create a pavao application](#create-a-pavao-application)
     - [Run examples](#run-examples)
@@ -186,7 +187,15 @@ let client = SmbClient::new(
 )?;
 ```
 
-Default options keep `smb.conf` negotiation. `SmbDialect::Nt1` (SMB1/CIFS) is deprecated and insecure and must be requested explicitly for both bounds to reach SMB1-only devices. Each client owns its native context, so multiple clients with different credentials and dialect bounds may coexist.
+Default options keep `smb.conf` negotiation. `SmbDialect::Nt1` (SMB1/CIFS) is deprecated and insecure and must be requested explicitly for both bounds to reach SMB1-only devices.
+
+All simultaneously live Pavão clients must use the exact same minimum and maximum dialect bounds. Default bounds `(None, None)` and partial bounds are exact policies and conflict with any different pair. After every client using one policy is dropped, a later client may select another policy.
+
+### Thread safety and performance
+
+Pavão serializes all native `libsmbclient` calls across every client in the process. Multiple clients with different credentials and other per-context options may coexist, but they cannot perform SMB work in parallel. One blocking operation delays every other Pavão SMB operation.
+
+Direct FFI calls through `SmbClient::ctx()` or `pavao-sys` bypass Pavão's synchronization. They must never race Pavão operations or other raw `libsmbclient` calls.
 
 ## Vendored libsmbclient
 
