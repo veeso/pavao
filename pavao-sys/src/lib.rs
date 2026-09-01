@@ -115,6 +115,27 @@ pub type smbc_smb_encrypt_level = c_int;
 /// Native Boolean represented as a C integer.
 pub type smbc_bool = c_int;
 
+/// Directory-entry type for an SMB workgroup.
+pub const SMBC_WORKGROUP: c_uint = 1;
+/// Directory-entry type for an SMB server.
+pub const SMBC_SERVER: c_uint = 2;
+/// Directory-entry type for an SMB file share.
+pub const SMBC_FILE_SHARE: c_uint = 3;
+/// Directory-entry type for an SMB printer share.
+pub const SMBC_PRINTER_SHARE: c_uint = 4;
+/// Directory-entry type for an SMB communications share.
+pub const SMBC_COMMS_SHARE: c_uint = 5;
+/// Directory-entry type for an SMB IPC share.
+pub const SMBC_IPC_SHARE: c_uint = 6;
+/// Directory-entry type for an SMB directory.
+pub const SMBC_DIR: c_uint = 7;
+/// Directory-entry type for an SMB file.
+pub const SMBC_FILE: c_uint = 8;
+/// Directory-entry type for an SMB symbolic link.
+pub const SMBC_LINK: c_uint = 9;
+/// Smallest file descriptor returned by `libsmbclient`.
+pub const SMBC_BASE_FD: c_int = 10_000;
+
 #[repr(C)]
 #[derive(Copy)]
 /// Information about a queued SMB print job.
@@ -820,5 +841,19 @@ mod tests {
         let _: unsafe extern "C" fn(*mut SMBCCTX, *const c_char) = smbc_setWorkgroup;
         let _: unsafe extern "C" fn(*mut SMBCCTX) -> *const c_char = smbc_getUser;
         let _: unsafe extern "C" fn(*mut SMBCCTX, *const c_char) = smbc_setUser;
+    }
+
+    #[test]
+    fn exposes_directory_entry_constants() {
+        assert_eq!(SMBC_WORKGROUP, 1);
+        assert_eq!(SMBC_SERVER, 2);
+        assert_eq!(SMBC_FILE_SHARE, 3);
+        assert_eq!(SMBC_PRINTER_SHARE, 4);
+        assert_eq!(SMBC_COMMS_SHARE, 5);
+        assert_eq!(SMBC_IPC_SHARE, 6);
+        assert_eq!(SMBC_DIR, 7);
+        assert_eq!(SMBC_FILE, 8);
+        assert_eq!(SMBC_LINK, 9);
+        assert_eq!(SMBC_BASE_FD, 10000);
     }
 }

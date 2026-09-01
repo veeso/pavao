@@ -117,6 +117,7 @@ impl TryFrom<c_uint> for SmbDirentType {
 mod test {
 
     use libc::c_char;
+    use pavao_sys::SMBC_FILE;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -187,7 +188,7 @@ mod test {
     #[test]
     fn converts_variable_length_dirent_without_overread() {
         let raw = ShortDirent {
-            smbc_type: 8,
+            smbc_type: SMBC_FILE,
             dirlen: std::mem::size_of::<ShortDirent>() as c_uint,
             commentlen: 7,
             comment: c"comment".as_ptr().cast_mut(),
@@ -204,7 +205,7 @@ mod test {
     #[test]
     fn should_convert_dirent_to_smb_dirent() {
         let raw = LongDirent {
-            smbc_type: 8,
+            smbc_type: SMBC_FILE,
             dirlen: std::mem::size_of::<LongDirent>() as c_uint,
             commentlen: 4,
             comment: c"test".as_ptr().cast_mut(),
