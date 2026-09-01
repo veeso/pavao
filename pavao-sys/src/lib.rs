@@ -1140,6 +1140,12 @@ unsafe extern "C" {
     ///
     /// `c` must be a valid, initialized native context pointer.
     pub fn smbc_getFunctionRemovexattr(c: *mut SMBCCTX) -> smbc_removexattr_fn;
+    /// Returns the extended-attribute listing callback installed in `c`.
+    ///
+    /// # Safety
+    ///
+    /// `c` must be a valid, initialized native context pointer.
+    pub fn smbc_getFunctionListxattr(c: *mut SMBCCTX) -> smbc_listxattr_fn;
     /// Returns the file-printing callback installed in `c`.
     ///
     /// # Safety
@@ -1667,6 +1673,14 @@ mod tests {
     fn binds_smbc_get_function_removexattr() {
         with_context(|context| unsafe {
             assert!(smbc_getFunctionRemovexattr(context).is_some());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn binds_smbc_get_function_listxattr() {
+        with_context(|context| unsafe {
+            assert!(smbc_getFunctionListxattr(context).is_some());
         });
     }
 }
