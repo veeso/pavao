@@ -34,6 +34,12 @@ const SRC_FILES: &[&str] = &[
     "third_party/heimdal/lib/roken/bswap.c",
     "third_party/heimdal/lib/roken/dumpdata.c",
     "third_party/heimdal/lib/roken/emalloc.c",
+    // Only built by Samba's own `third_party/heimdal_build/wscript_build`
+    // when `HAVE_MEMSET_S` is unset. Darwin's libc has provided `memset_s`
+    // since macOS 10.9, so macOS's own configure sets `HAVE_MEMSET_S` and
+    // never compiles this fallback; glibc still lacks it, so Linux builds
+    // still need it.
+    #[cfg(target_os = "linux")]
     "third_party/heimdal/lib/roken/memset_s.c",
     "third_party/heimdal/lib/roken/ecalloc.c",
     "third_party/heimdal/lib/roken/getarg.c",
@@ -970,56 +976,110 @@ const SRC_FILES: &[&str] = &[
     "source4/lib/tls/tls_tstream.c",
     // SMB-over-QUIC transport, bundled by Samba since 4.23 as a transitive
     // dependency of `source4/lib/tls/tls_tstream.c` (no external QUIC library
-    // required).
+    // required). Samba's own `third_party/ngtcp2/wscript` and
+    // `third_party/quic/wscript` gate this feature to Linux
+    // (`sys.platform.startswith('linux')`), setting the `ngtcp2` and `quic`
+    // waf targets to `EMPTY` elsewhere, so none of these object files exist
+    // outside Linux builds.
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/crypto/gnutls/gnutls.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/crypto/shared.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_acktr.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_addr.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_balloc.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_bbr.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_buf.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_callbacks.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_cc.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_cid.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_conn.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_conn_info.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_conv.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_crypto.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_dcidtr.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_err.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_frame_chain.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_gaptr.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_idtr.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_ksl.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_log.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_map.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_mem.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_objalloc.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_opl.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_path.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_pcg.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_pkt.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_pmtud.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_ppe.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_pq.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_pv.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_qlog.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_range.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_ratelim.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_ringbuf.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_rob.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_rst.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_rtb.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_settings.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_str.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_strm.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_transport_params.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_unreachable.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_vec.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_version.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/lib/ngtcp2_window_filter.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/libngtcp2.empty.c",
+    #[cfg(target_os = "linux")]
     "third_party/ngtcp2/libngtcp2_crypto_gnutls.empty.c",
+    #[cfg(target_os = "linux")]
     "third_party/quic/libquic_handshake_wrapper.c",
     "source4/auth/kerberos/krb5_init_context.c",
     "source4/lib/stream/packet.c",
