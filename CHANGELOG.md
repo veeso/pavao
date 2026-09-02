@@ -2,6 +2,43 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.1
+
+Released on 2026-09-02
+
+### Added
+
+- **pavao-src:** bump vendored samba to 4.24.6 and minimize build deps (#46)
+
+> - feat(pavao-src): bump vendored samba to 4.24.6 and minimize its build deps
+>
+> Trim ./configure to only what the static libsmbclient archive needs
+> (disabling AD-DC, LDAP, CUPS, PAM, JSON, Spotlight/WSP, clustering, and
+> other server-only features), add the source files 4.24 needs that 4.22
+> did not, and stop pavao-sys from force-linking libraries the trimmed
+> build no longer produces. Cuts the Ubuntu build dependency list from 24
+> packages to 11.
+>
+> - fix(pavao-sys): link ICU only when Samba's own configure would find it
+>
+> Samba's lib/util/charset/wscript_configure probes icu-i18n/icu-uc with
+> no ./configure flag to disable it, so whether iconv.c pulls in
+> ICU-based UTF-8 normalisation depends entirely on what's on the build
+> host. ubuntu-latest ships ICU preinstalled (unlike a bare ubuntu:24.04
+> image), so dropping the unconditional icu link left the vendored build
+> referencing unresolved ICU symbols there. Probe icu-i18n/icu-uc the
+> same way Samba's configure does and link only when both are found, so
+> the two stay in sync regardless of environment.
+>
+> - fix(pavao-src): skip Linux-only source files on macOS vendored build
+>
+> Samba's own third_party/ngtcp2 and third_party/quic wscripts gate the
+> SMB-over-QUIC transport to Linux, and Darwin's libc already provides
+> memset_s so heimdal's roken fallback is never compiled there either.
+> The vendored source list still archived those object files
+> unconditionally, so macOS builds failed looking for objects Samba's
+> own waf build never produced.
+
 ## 0.3.0
 
 Released on 2026-09-01
