@@ -40,30 +40,15 @@ jobs:
           sudo apt-get install --yes \
             bison \
             build-essential \
-            cpanminus \
             flex \
-            libacl1-dev \
-            libarchive-dev \
-            libbsd-dev \
-            libcap-dev \
-            libcups2-dev \
-            libdbus-1-dev \
-            libglib2.0-dev \
             libgnutls28-dev \
-            libicu-dev \
-            libjansson-dev \
-            libkeyutils-dev \
-            libldap2-dev \
-            libgit2-dev \
-            libntirpc-dev \
-            libpam0g-dev \
-            libsasl2-dev \
-            libtracker-sparql-3.0-dev \
+            libparse-yapp-perl \
+            libssl-dev \
             libunistring-dev \
             make \
             pkg-config \
+            python3 \
             zlib1g-dev
-          sudo cpanm Parse::Yapp::Driver
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -71,35 +56,21 @@ jobs:
           brew install \
           bison \
           cpanminus \
-          cups \
           flex \
           gettext \
           gmp \
           gnutls \
-          icu4c \
-          jansson \
-          libarchive \
-          libbsd \
           libunistring \
-          libgit2 \
-          libtirpc \
-          openldap \
+          openssl \
           pkg-config \
           zlib
           brew link --force bison
-          brew link --force cups
           brew link --force flex
           brew link --force gettext
           brew link --force gmp
           brew link --force gnutls
-          brew link --force icu4c
-          brew link --force jansson
-          brew link --force libarchive
-          brew link --force libbsd
-          brew link --force libgit2
-          brew link --force libtirpc
           brew link --force libunistring
-          brew link --force openldap
+          brew link --force openssl
           brew link --force zlib
           cpanm Parse::Yapp::Driver
       - name: Cache Cargo data

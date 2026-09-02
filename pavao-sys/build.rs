@@ -52,21 +52,28 @@ fn build_vendored() {
     build_samba();
 
     // add further dependencies
+    //
+    // Only libraries the trimmed Samba `configure` in `pavao_src::Build` actually
+    // links against belong here. `--without-ldap`, `--disable-cups`,
+    // `--without-json`, `--disable-spotlight`, `--without-kernel-keyring`, and the
+    // other feature flags mean libldap/lber, cups, jansson, icu, and keyutils are
+    // never part of the static archive; libbsd and libcap are optional compat
+    // shims Samba falls back away from when absent. Force-linking any of them
+    // here would require them again for no reason.
     add_library("z", "zlib");
-    add_library("ldap", "openldap");
-    add_library("cups", "cups");
-    add_library("lber", "openldap");
-    add_library("jansson", "jansson");
-    add_library("icui18n", "icu4c");
-    add_library("icuuc", "icu4c");
     add_library("gnutls", "gnutls");
-    add_library("bsd", "libbsd");
     add_library("resolv", "libresolv");
 
-    // linux only
-    if cfg!(target_os = "linux") {
-        add_library("cap", "cap");
-        add_library("keyutils", "keyutils");
+    // Samba's `lib/util/charset/wscript_configure` probes `icu-i18n`/`icu-uc`
+    // with no `./configure` flag to force it off: if both are present on the
+    // build host, Samba compiles ICU-based UTF-8 normalisation into iconv.c
+    // and this vendored build's static archive references ICU symbols whether
+    // we like it or not. Mirror that same pkg-config probe here so linking
+    // ICU stays in sync with whatever Samba's own configure decided, instead
+    // of guessing based on what we assume is installed.
+    if icu_available() {
+        add_library("icui18n", "icu4c");
+        add_library("icuuc", "icu4c");
     }
 
     // macOS only
@@ -113,6 +120,17 @@ fn build_samba() {
     );
     println!("cargo:include={}", artifacts.include_dir.display());
     println!("cargo:rustc-link-lib=static=smbclient");
+}
+
+/// Reports whether both `icu-i18n` and `icu-uc` are available, matching the
+/// combined `pkg-config icu-i18n icu-uc` probe Samba's own configure runs.
+fn icu_available() -> bool {
+    ["icu-i18n", "icu-uc"].into_iter().all(|lib| {
+        pkg_config::Config::new()
+            .cargo_metadata(false)
+            .probe(lib)
+            .is_ok()
+    })
 }
 
 fn add_library(lib: &str, brew_name: &str) {
