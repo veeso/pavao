@@ -33,26 +33,21 @@ Contains the source code to build the libsmbclient statically to vendor it into 
 
 ## Requirements
 
+Building the bundled Samba source configures it with most optional server,
+directory-service, and printing features disabled (`--without-ad-dc`,
+`--without-ldap`, `--disable-cups`, `--without-json`, `--disable-spotlight`,
+and others), since only the static `libsmbclient` archive is produced. This
+keeps the dependency list well below what a full Samba build requires.
+
 **these packages should be necessary on Linux**:
 
 - bison
 - build-essential
 - flex
-- libacl1-dev
-- libarchive-dev
-- libbsd-dev
-- libcap-dev
-- libcups2-dev
-- libdbus-1-dev
-- libglib2.0-dev
 - libgnutls28-dev
-- libicu-dev
-- libjansson-dev
-- libkeyutils-dev
-- libldap2-dev
-- libntirpc-dev
-- libpam0g-dev
-- libtracker-sparql-3.0-dev
+- libparse-yapp-perl
+- libssl-dev
+- libunistring-dev
 - make
 - pkg-config
 - python3
@@ -61,21 +56,14 @@ Contains the source code to build the libsmbclient statically to vendor it into 
 and these on **MacOS**:
 
 - bison
-- cpanminus
-- cups
+- cpanminus (plus `cpanm Parse::Yapp::Driver`)
 - flex
 - gettext
 - gmp
 - gnutls
-- icu4c
-- jansson
-- libarchive
-- libbsd
 - libunistring
-- libgit2
-- libtirpc
-- openldap
-- pkg
+- openssl
+- pkg-config
 - zlib
 
 ## License 📃

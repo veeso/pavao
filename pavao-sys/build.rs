@@ -52,22 +52,17 @@ fn build_vendored() {
     build_samba();
 
     // add further dependencies
+    //
+    // Only libraries the trimmed Samba `configure` in `pavao_src::Build` actually
+    // links against belong here. `--without-ldap`, `--disable-cups`,
+    // `--without-json`, `--disable-spotlight`, `--without-kernel-keyring`, and the
+    // other feature flags mean libldap/lber, cups, jansson, icu, and keyutils are
+    // never part of the static archive; libbsd and libcap are optional compat
+    // shims Samba falls back away from when absent. Force-linking any of them
+    // here would require them again for no reason.
     add_library("z", "zlib");
-    add_library("ldap", "openldap");
-    add_library("cups", "cups");
-    add_library("lber", "openldap");
-    add_library("jansson", "jansson");
-    add_library("icui18n", "icu4c");
-    add_library("icuuc", "icu4c");
     add_library("gnutls", "gnutls");
-    add_library("bsd", "libbsd");
     add_library("resolv", "libresolv");
-
-    // linux only
-    if cfg!(target_os = "linux") {
-        add_library("cap", "cap");
-        add_library("keyutils", "keyutils");
-    }
 
     // macOS only
     if cfg!(target_os = "macos") {

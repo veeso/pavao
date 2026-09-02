@@ -34,6 +34,7 @@ const SRC_FILES: &[&str] = &[
     "third_party/heimdal/lib/roken/bswap.c",
     "third_party/heimdal/lib/roken/dumpdata.c",
     "third_party/heimdal/lib/roken/emalloc.c",
+    "third_party/heimdal/lib/roken/memset_s.c",
     "third_party/heimdal/lib/roken/ecalloc.c",
     "third_party/heimdal/lib/roken/getarg.c",
     "third_party/heimdal/lib/roken/getauxval.c",
@@ -270,6 +271,9 @@ const SRC_FILES: &[&str] = &[
     "libcli/security/conditional_ace.c",
     "libcli/security/sddl_conditional_ace.c",
     "libcli/security/claims-conversions.c",
+    "libcli/security/trust_forest_info.c",
+    "libcli/security/claims_transformation.lex.c",
+    "libcli/security/claims_transformation.tab.c",
     "third_party/heimdal/lib/hcrypto/libtommath/bn_cutoffs.c",
     "third_party/heimdal/lib/hcrypto/libtommath/bn_deprecated.c",
     "third_party/heimdal/lib/hcrypto/libtommath/bn_mp_2expt.c",
@@ -964,6 +968,59 @@ const SRC_FILES: &[&str] = &[
     "source4/auth/kerberos/kerberos_pac.c",
     "source4/lib/tls/tlscert.c",
     "source4/lib/tls/tls_tstream.c",
+    // SMB-over-QUIC transport, bundled by Samba since 4.23 as a transitive
+    // dependency of `source4/lib/tls/tls_tstream.c` (no external QUIC library
+    // required).
+    "third_party/ngtcp2/crypto/gnutls/gnutls.c",
+    "third_party/ngtcp2/crypto/shared.c",
+    "third_party/ngtcp2/lib/ngtcp2_acktr.c",
+    "third_party/ngtcp2/lib/ngtcp2_addr.c",
+    "third_party/ngtcp2/lib/ngtcp2_balloc.c",
+    "third_party/ngtcp2/lib/ngtcp2_bbr.c",
+    "third_party/ngtcp2/lib/ngtcp2_buf.c",
+    "third_party/ngtcp2/lib/ngtcp2_callbacks.c",
+    "third_party/ngtcp2/lib/ngtcp2_cc.c",
+    "third_party/ngtcp2/lib/ngtcp2_cid.c",
+    "third_party/ngtcp2/lib/ngtcp2_conn.c",
+    "third_party/ngtcp2/lib/ngtcp2_conn_info.c",
+    "third_party/ngtcp2/lib/ngtcp2_conv.c",
+    "third_party/ngtcp2/lib/ngtcp2_crypto.c",
+    "third_party/ngtcp2/lib/ngtcp2_dcidtr.c",
+    "third_party/ngtcp2/lib/ngtcp2_err.c",
+    "third_party/ngtcp2/lib/ngtcp2_frame_chain.c",
+    "third_party/ngtcp2/lib/ngtcp2_gaptr.c",
+    "third_party/ngtcp2/lib/ngtcp2_idtr.c",
+    "third_party/ngtcp2/lib/ngtcp2_ksl.c",
+    "third_party/ngtcp2/lib/ngtcp2_log.c",
+    "third_party/ngtcp2/lib/ngtcp2_map.c",
+    "third_party/ngtcp2/lib/ngtcp2_mem.c",
+    "third_party/ngtcp2/lib/ngtcp2_objalloc.c",
+    "third_party/ngtcp2/lib/ngtcp2_opl.c",
+    "third_party/ngtcp2/lib/ngtcp2_path.c",
+    "third_party/ngtcp2/lib/ngtcp2_pcg.c",
+    "third_party/ngtcp2/lib/ngtcp2_pkt.c",
+    "third_party/ngtcp2/lib/ngtcp2_pmtud.c",
+    "third_party/ngtcp2/lib/ngtcp2_ppe.c",
+    "third_party/ngtcp2/lib/ngtcp2_pq.c",
+    "third_party/ngtcp2/lib/ngtcp2_pv.c",
+    "third_party/ngtcp2/lib/ngtcp2_qlog.c",
+    "third_party/ngtcp2/lib/ngtcp2_range.c",
+    "third_party/ngtcp2/lib/ngtcp2_ratelim.c",
+    "third_party/ngtcp2/lib/ngtcp2_ringbuf.c",
+    "third_party/ngtcp2/lib/ngtcp2_rob.c",
+    "third_party/ngtcp2/lib/ngtcp2_rst.c",
+    "third_party/ngtcp2/lib/ngtcp2_rtb.c",
+    "third_party/ngtcp2/lib/ngtcp2_settings.c",
+    "third_party/ngtcp2/lib/ngtcp2_str.c",
+    "third_party/ngtcp2/lib/ngtcp2_strm.c",
+    "third_party/ngtcp2/lib/ngtcp2_transport_params.c",
+    "third_party/ngtcp2/lib/ngtcp2_unreachable.c",
+    "third_party/ngtcp2/lib/ngtcp2_vec.c",
+    "third_party/ngtcp2/lib/ngtcp2_version.c",
+    "third_party/ngtcp2/lib/ngtcp2_window_filter.c",
+    "third_party/ngtcp2/libngtcp2.empty.c",
+    "third_party/ngtcp2/libngtcp2_crypto_gnutls.empty.c",
+    "third_party/quic/libquic_handshake_wrapper.c",
     "source4/auth/kerberos/krb5_init_context.c",
     "source4/lib/stream/packet.c",
     "auth/kerberos/gssapi_pac.c",
@@ -1514,6 +1571,12 @@ impl Build {
         let ar = cc.get_archiver();
 
         // configure
+        //
+        // These flags trim Samba's configure/build down to what the static
+        // `libsmbclient` archive in `SRC_FILES` actually needs, so the vendored
+        // build does not probe for (and therefore does not require) libraries
+        // used only by smbd/winbindd/the AD DC or by disabled optional features
+        // (CUPS, PAM, LDAP, Avahi, Spotlight/WSP, clustering, JSON, and so on).
         let mut configure = Command::new("sh");
         configure.arg("./configure");
         configure.arg("--disable-python");
@@ -1522,8 +1585,37 @@ impl Build {
         configure.arg("--without-ad-dc");
         configure.arg("--bundled-libraries=ALL");
         configure.arg("--without-libarchive");
-        #[cfg(target_os = "macos")]
-        configure.arg("--without-acl-support"); // not supported on mac
+        configure.arg("--without-acl-support");
+        configure.arg("--without-ads");
+        configure.arg("--without-winbind");
+        configure.arg("--disable-cups");
+        configure.arg("--disable-iprint");
+        configure.arg("--without-pam");
+        configure.arg("--without-quotas");
+        configure.arg("--without-utmp");
+        configure.arg("--disable-avahi");
+        configure.arg("--without-automount");
+        configure.arg("--without-dmapi");
+        configure.arg("--without-fam");
+        configure.arg("--without-prometheus-exporter");
+        configure.arg("--without-cluster-support");
+        configure.arg("--without-regedit");
+        configure.arg("--without-winexe");
+        configure.arg("--without-fake-kaserver");
+        configure.arg("--disable-glusterfs");
+        configure.arg("--disable-cephfs");
+        configure.arg("--disable-spotlight");
+        configure.arg("--disable-wsp");
+        configure.arg("--without-libunwind");
+        configure.arg("--without-lttng");
+        configure.arg("--without-kernel-keyring");
+        configure.arg("--without-ldap");
+        configure.arg("--without-json");
+        configure.arg("--without-smb1-server");
+        configure.arg("--without-systemd-userdb");
+        // vfs_snapper is a shared module pulled in by default and requires
+        // D-Bus; it is not part of `SRC_FILES` and is never linked in.
+        configure.arg("--with-shared-modules=!vfs_snapper");
         configure.env("CC", cc_env);
         configure.env("AR", ar.get_program());
         // On MacOS we need to explicitly declare include paths for gnutls
